@@ -5,13 +5,14 @@ import {
   VALID_INTERVALS,
   VALID_SYMBOLS,
 } from "./binance.constants";
+import { KlinesResponse } from "./binance.interface";
 
 export class BinanceService {
   async getKlines(
     symbol: string,
     interval: string,
     limit: number
-  ): Promise<{ erro: boolean; data?: any; message?: string }> {
+  ): Promise<KlinesResponse> {
     if (!VALID_INTERVALS.includes(interval)) {
       return {
         erro: true,
