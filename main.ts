@@ -1,5 +1,8 @@
 import { BinanceService } from "./app/binance/binance.service";
 import { BinanceStats } from "./app/binance/binance.stats";
+import { connectToDatabase } from "./app/lib/database";
+
+connectToDatabase();
 
 const symbol = "BTCBRL";
 const interval = "1d";
