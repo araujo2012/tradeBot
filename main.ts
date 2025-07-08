@@ -40,4 +40,4 @@ const startSocketForUser = async (username: string) => {
   startBinanceSocket(listenKey, username);
 };
 
-startSocketForUser(username);
+startSocketForUser("araujo2012");
