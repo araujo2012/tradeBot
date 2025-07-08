@@ -1,25 +1,43 @@
-import { BinanceService } from "./app/binance/binance.service";
-import { BinanceStats } from "./app/binance/binance.stats";
+import express from "express";
+import binanceRoutes from "./app/binance/binance.route";
 import { connectToDatabase } from "./app/lib/database";
+import { BinanceService } from "./app/binance/binance.service";
+import { startBinanceSocket } from "./app/binance/binance.socket";
+import { UserModel } from "./models/user";
 
-connectToDatabase();
+const app = express();
+app.use(express.json());
 
-const symbol = "BTCBRL";
-const interval = "1d";
-const limit = 21;
+app.use("/binance", binanceRoutes);
 
-const testKlines = async () => {
-  const service = new BinanceService();
-  const stats = new BinanceStats();
-  const klines = await service.getKlines(symbol, interval, limit);
-  if (klines.erro) {
-    console.log(klines);
+const username = "nome-do-usuario"; // substitua conforme necessário
+
+const startSocketForUser = async (username: string) => {
+  await connectToDatabase();
+
+  const user = await UserModel.findOne({ username });
+
+  if (!user || !user.apiKey || !user.apiSecret) {
+    console.error("Usuário não encontrado ou sem credenciais.");
     return;
   }
-  const klinesValue = stats.calculateKlineValue(klines?.data || []);
-  const mean = stats.calculateAverage(klinesValue);
-  const dp = stats.calculateStandardDeviation(klinesValue);
-  console.log({ mean, dp });
+
+  const service = new BinanceService({
+    apiKey: user.apiKey,
+    apiSecret: user.apiSecret,
+  });
+
+  const listenKeyResult = await service.getBinanceListenKey();
+
+  if (listenKeyResult.error) {
+    console.error("Erro ao obter listenKey:", listenKeyResult.message);
+    return;
+  }
+
+  const listenKey = listenKeyResult.data.listenKey;
+  console.log("ListenKey gerada:", listenKey);
+
+  startBinanceSocket(listenKey, username);
 };
 
-testKlines();
+startSocketForUser(username);
