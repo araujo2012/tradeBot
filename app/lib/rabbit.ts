@@ -7,9 +7,13 @@ let channel: amqp.Channel;
 
 export async function connectToRabbitMQ() {
   const uri = process.env.RABBITMQ_URI!;
-  const conn = await amqp.connect(uri);
-  channel = await conn.createChannel();
-  console.log("✅ Connected to RabbitMQ");
+  const connection = await amqp.connect(uri);
+  channel = await connection.createChannel();
+
+  // Cria a fila 'messages' assim que conectar
+  await channel.assertQueue("messages", { durable: true });
+
+  console.log("✅ Connected to RabbitMQ and queue 'messages' is ready");
 
   return channel;
 }

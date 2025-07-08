@@ -4,8 +4,12 @@ import { connectToDatabase } from "./app/lib/database";
 import { BinanceService } from "./app/binance/binance.service";
 import { startBinanceSocket } from "./app/binance/binance.socket";
 import { UserModel } from "./models/user";
+import { connectToRabbitMQ } from "./app/lib/rabbit";
 
-connectToDatabase();
+(async () => {
+  await connectToDatabase();
+  await connectToRabbitMQ();
+})();
 
 const app = express();
 app.use(express.json());
