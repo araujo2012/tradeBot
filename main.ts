@@ -5,6 +5,8 @@ import { BinanceService } from "./app/binance/binance.service";
 import { startBinanceSocket } from "./app/binance/binance.socket";
 import { UserModel } from "./models/user";
 
+connectToDatabase();
+
 const app = express();
 app.use(express.json());
 
