@@ -18,3 +18,10 @@ export interface KlinesResponse {
   data?: Kline[];
   message?: string;
 }
+
+export interface StartBinanceSocketParams {
+  listenKey: string;
+  username: string;
+  apiKey?: string;
+  apiSecret?: string;
+}

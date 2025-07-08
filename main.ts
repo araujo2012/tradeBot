@@ -43,7 +43,12 @@ const startSocketForUser = async (username: string) => {
   const listenKey = listenKeyResult.data.listenKey;
   console.log("ListenKey gerada:", listenKey);
 
-  startBinanceSocket(listenKey, username);
+  startBinanceSocket({
+    listenKey,
+    username,
+    apiKey: user.apiKey,
+    apiSecret: user.apiSecret,
+  });
 };
 
 startSocketForUser("araujo2012");

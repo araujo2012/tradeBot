@@ -33,7 +33,13 @@ export const startBinanceConnection = async (req: Request, res: Response) => {
     const listenKey = listenKeyResult.data.listenKey;
 
     try {
-      await startBinanceSocket(listenKey, username);
+      await startBinanceSocket({
+        listenKey,
+        username,
+        apiKey: user.apiKey,
+        apiSecret: user.apiSecret,
+      });
+
       return res.status(200).json({ message: "Socket started.", listenKey });
     } catch (socketError: any) {
       return res
