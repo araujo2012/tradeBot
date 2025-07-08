@@ -6,21 +6,14 @@ import { startBinanceSocket } from "./app/binance/binance.socket";
 import { UserModel } from "./models/user";
 import { connectToRabbitMQ } from "./app/lib/rabbit";
 
-(async () => {
-  await connectToDatabase();
-  await connectToRabbitMQ();
-})();
-
 const app = express();
 app.use(express.json());
 
 app.use("/binance", binanceRoutes);
 
-const username = "nome-do-usuario"; // substitua conforme necessário
-
 const startSocketForUser = async (username: string) => {
+  await connectToRabbitMQ();
   await connectToDatabase();
-
   const user = await UserModel.findOne({ username });
 
   if (!user || !user.apiKey || !user.apiSecret) {
