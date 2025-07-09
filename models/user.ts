@@ -1,11 +1,28 @@
-import { Schema, model } from "mongoose";
+import { Schema, model, Document } from "mongoose";
 
-const userSchema = new Schema({
-  username: { type: String, required: true, unique: true },
-  limit: Number,
-  password: String,
-  apiKey: String,
-  apiSecret: String,
-});
+export interface UserDocument extends Document {
+  username: string;
+  password: string;
+  apiKey?: string;
+  apiSecret?: string;
+  limit?: number;
+  name?: string;
+  email?: string;
+  phone?: string;
+}
 
-export const UserModel = model("User", userSchema);
+const userSchema = new Schema<UserDocument>(
+  {
+    username: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    apiKey: { type: String },
+    apiSecret: { type: String },
+    limit: { type: Number },
+    name: { type: String },
+    email: { type: String },
+    phone: { type: String },
+  },
+  { timestamps: true }
+);
+
+export const UserModel = model<UserDocument>("User", userSchema);
