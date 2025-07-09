@@ -1,33 +1,46 @@
-import express from "express";
+import express, { RequestHandler } from "express";
 import binanceRoutes from "./app/binance/binance.route";
+import authRoutes from "./app/auth/auth.routes";
+import userRoutes from "./app/user/user.routes";
+import { authMiddleware } from "./app/auth/auth.middleware";
 import { connectToDatabase } from "./app/lib/database";
-import { BinanceService } from "./app/binance/binance.service";
-import { startBinanceSocket } from "./app/binance/binance.socket";
 import { connectToRabbitMQ } from "./app/lib/rabbit";
 import { SessionModel } from "./models/session";
+import { BinanceService } from "./app/binance/binance.service";
+import { startBinanceSocket } from "./app/binance/binance.socket";
+import mongoose from "mongoose";
 
-await connectToRabbitMQ();
-await connectToDatabase();
+async function initApp() {
+  const app = express();
+  app.use(express.json());
+  app.use("/auth", authRoutes);
+  app.use("/users", authMiddleware as RequestHandler, userRoutes);
+  app.use("/binance", authMiddleware as RequestHandler, binanceRoutes);
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
+}
 
-const app = express();
-app.use(express.json());
-app.use("/binance", binanceRoutes);
-
-async function bootstrap() {
+async function bootstrapSessions() {
   const sessions = await SessionModel.find();
 
   await Promise.all(
     sessions.map(async (session) => {
+      const sessionId = (session._id as mongoose.Types.ObjectId).toString();
+      const userId = session.userId.toString();
+
+      const socketParams = {
+        listenKey: session.listenKey,
+        userId,
+        apiKey: session.apiKey,
+        apiSecret: session.apiSecret,
+      };
+
       try {
-        await startBinanceSocket({
-          listenKey: session.listenKey,
-          userId: session.userId.toString(),
-          apiKey: session.apiKey,
-          apiSecret: session.apiSecret,
-        });
+        await startBinanceSocket(socketParams);
+        console.log(`[Bootstrap] Socket iniciado para sessão ${sessionId}`);
       } catch (err) {
         console.warn(
-          `[Bootstrap] ListenKey falhou. Gerando nova para ${session._id}...`
+          `[Bootstrap] ListenKey inválido para ${sessionId}. Tentando regenerar...`
         );
 
         const service = new BinanceService({
@@ -36,26 +49,29 @@ async function bootstrap() {
         });
 
         const newKeyResult = await service.getBinanceListenKey();
-        if (!newKeyResult.error) {
-          session.listenKey = newKeyResult.data.listenKey;
-          await session.save();
 
-          try {
-            await startBinanceSocket({
-              listenKey: session.listenKey,
-              userId: session.userId.toString(),
-              apiKey: session.apiKey,
-              apiSecret: session.apiSecret,
-            });
-          } catch (err) {
-            console.error(
-              `[Bootstrap] Falha ao reconectar com novo listenKey para ${session._id}`
-            );
-          }
-        } else {
+        if (newKeyResult.error) {
           console.error(
-            `[Bootstrap] Erro ao obter novo listenKey:`,
+            `[Bootstrap] Erro ao gerar novo listenKey para ${sessionId}:`,
             newKeyResult.message
+          );
+          return;
+        }
+
+        session.listenKey = newKeyResult.data.listenKey;
+        await session.save();
+
+        try {
+          await startBinanceSocket({
+            ...socketParams,
+            listenKey: session.listenKey,
+          });
+          console.log(
+            `[Bootstrap] Reconectado com novo listenKey para ${sessionId}`
+          );
+        } catch (err) {
+          console.error(
+            `[Bootstrap] Falha ao reconectar com novo listenKey para ${sessionId}`
           );
         }
       }
@@ -63,4 +79,14 @@ async function bootstrap() {
   );
 }
 
-bootstrap();
+(async () => {
+  try {
+    await connectToRabbitMQ();
+    await connectToDatabase();
+    await initApp();
+    await bootstrapSessions();
+  } catch (err) {
+    console.error("❌ Falha na inicialização da aplicação:", err);
+    process.exit(1);
+  }
+})();
