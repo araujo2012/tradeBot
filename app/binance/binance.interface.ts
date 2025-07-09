@@ -21,7 +21,7 @@ export interface KlinesResponse {
 
 export interface StartBinanceSocketParams {
   listenKey: string;
-  username: string;
+  userId: string;
   apiKey?: string;
   apiSecret?: string;
 }

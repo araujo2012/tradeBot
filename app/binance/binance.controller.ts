@@ -2,16 +2,17 @@ import { Request, Response } from "express";
 import { UserModel } from "../../models/user";
 import { BinanceService } from "./binance.service";
 import { startBinanceSocket } from "./binance.socket";
+import { SessionModel } from "../../models/session";
 
 export const startBinanceConnection = async (req: Request, res: Response) => {
-  const { username } = req.body;
+  const { _id } = req.body;
 
-  if (!username) {
+  if (!_id) {
     return res.status(400).json({ error: "Username is required." });
   }
 
   try {
-    const user = await UserModel.findOne({ username });
+    const user = await UserModel.findOne({ _id });
 
     if (!user || !user.apiKey || !user.apiSecret) {
       return res
@@ -32,20 +33,23 @@ export const startBinanceConnection = async (req: Request, res: Response) => {
 
     const listenKey = listenKeyResult.data.listenKey;
 
-    try {
-      await startBinanceSocket({
-        listenKey,
-        username,
-        apiKey: user.apiKey,
-        apiSecret: user.apiSecret,
-      });
+    await startBinanceSocket({
+      listenKey,
+      userId: _id.toString(),
+      apiKey: user.apiKey,
+      apiSecret: user.apiSecret,
+    });
 
-      return res.status(200).json({ message: "Socket started.", listenKey });
-    } catch (socketError: any) {
-      return res
-        .status(500)
-        .json({ error: socketError.message || "WebSocket failed to connect." });
-    }
+    await SessionModel.create({
+      userId: user._id,
+      listenKey,
+      apiKey: user.apiKey,
+      apiSecret: user.apiSecret,
+    });
+
+    return res
+      .status(200)
+      .json({ message: "Socket started and session saved.", listenKey });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

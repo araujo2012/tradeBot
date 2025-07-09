@@ -3,45 +3,64 @@ import binanceRoutes from "./app/binance/binance.route";
 import { connectToDatabase } from "./app/lib/database";
 import { BinanceService } from "./app/binance/binance.service";
 import { startBinanceSocket } from "./app/binance/binance.socket";
-import { UserModel } from "./models/user";
 import { connectToRabbitMQ } from "./app/lib/rabbit";
+import { SessionModel } from "./models/session";
+
+await connectToRabbitMQ();
+await connectToDatabase();
 
 const app = express();
 app.use(express.json());
-
 app.use("/binance", binanceRoutes);
 
-const startSocketForUser = async (username: string) => {
-  await connectToRabbitMQ();
-  await connectToDatabase();
-  const user = await UserModel.findOne({ username });
+async function bootstrap() {
+  const sessions = await SessionModel.find();
 
-  if (!user || !user.apiKey || !user.apiSecret) {
-    console.error("Usuário não encontrado ou sem credenciais.");
-    return;
-  }
+  await Promise.all(
+    sessions.map(async (session) => {
+      try {
+        await startBinanceSocket({
+          listenKey: session.listenKey,
+          userId: session.userId.toString(),
+          apiKey: session.apiKey,
+          apiSecret: session.apiSecret,
+        });
+      } catch (err) {
+        console.warn(
+          `[Bootstrap] ListenKey falhou. Gerando nova para ${session._id}...`
+        );
 
-  const service = new BinanceService({
-    apiKey: user.apiKey,
-    apiSecret: user.apiSecret,
-  });
+        const service = new BinanceService({
+          apiKey: session.apiKey,
+          apiSecret: session.apiSecret,
+        });
 
-  const listenKeyResult = await service.getBinanceListenKey();
+        const newKeyResult = await service.getBinanceListenKey();
+        if (!newKeyResult.error) {
+          session.listenKey = newKeyResult.data.listenKey;
+          await session.save();
 
-  if (listenKeyResult.error) {
-    console.error("Erro ao obter listenKey:", listenKeyResult.message);
-    return;
-  }
+          try {
+            await startBinanceSocket({
+              listenKey: session.listenKey,
+              userId: session.userId.toString(),
+              apiKey: session.apiKey,
+              apiSecret: session.apiSecret,
+            });
+          } catch (err) {
+            console.error(
+              `[Bootstrap] Falha ao reconectar com novo listenKey para ${session._id}`
+            );
+          }
+        } else {
+          console.error(
+            `[Bootstrap] Erro ao obter novo listenKey:`,
+            newKeyResult.message
+          );
+        }
+      }
+    })
+  );
+}
 
-  const listenKey = listenKeyResult.data.listenKey;
-  console.log("ListenKey gerada:", listenKey);
-
-  startBinanceSocket({
-    listenKey,
-    username,
-    apiKey: user.apiKey,
-    apiSecret: user.apiSecret,
-  });
-};
-
-startSocketForUser("araujo2012");
+bootstrap();
