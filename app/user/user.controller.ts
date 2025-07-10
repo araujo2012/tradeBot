@@ -24,7 +24,8 @@ export const getUser = async (
   req: Request,
   res: Response
 ): Promise<Response | void> => {
-  const user = await UserModel.findById(req.params.id, "-password");
+  const { userId } = req?.user || {};
+  const user = await UserModel.findById(userId, "-password");
   if (!user) return res.status(404).json({ error: "User not found" });
   res.json(user);
 };

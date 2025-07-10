@@ -12,5 +12,5 @@
       "@binance/*": ["app/binance/*"]
     }
   },
-  "include": ["app", "models", "scripts"]
+  "include": ["app", "models", "scripts", "types/**/*.d.ts", "**/*.ts"]
 }

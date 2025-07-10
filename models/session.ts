@@ -5,6 +5,7 @@ export interface SessionDocument extends Document {
   listenKey: string;
   apiKey: string;
   apiSecret: string;
+  limit: number;
 }
 
 const sessionSchema = new Schema<SessionDocument>(
@@ -13,6 +14,7 @@ const sessionSchema = new Schema<SessionDocument>(
     listenKey: { type: String, required: true },
     apiKey: { type: String, required: true },
     apiSecret: { type: String, required: true },
+    limit: { type: Number, required: true },
   },
   { timestamps: true }
 );
