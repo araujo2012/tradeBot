@@ -15,9 +15,7 @@ const userSchema = new Schema<UserDocument>(
   {
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    apiKey: { type: String },
-    apiSecret: { type: String },
-    limit: { type: Number },
+    limit: { type: Number, default: 0 },
     name: { type: String },
     email: { type: String },
     phone: { type: String },

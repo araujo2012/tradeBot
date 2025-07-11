@@ -18,7 +18,6 @@ router.use(authMiddleware as RequestHandler);
 router.get("/", getUser as RequestHandler);
 router.put("/", updateUser);
 router.delete("/", deleteUser);
-router.put("/api", updateApiCredentials);
 router.put("/limit", updateLimit);
 router.put("/profile", updateProfile);
 

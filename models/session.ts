@@ -7,6 +7,7 @@ export interface SessionDocument extends Document {
   apiSecret: string;
   limit: number;
   status: "active" | "inactive";
+  name?: string;
 }
 
 const sessionSchema = new Schema<SessionDocument>(
@@ -21,6 +22,7 @@ const sessionSchema = new Schema<SessionDocument>(
       enum: ["active", "inactive"],
       default: "inactive",
     },
+    name: { type: String },
   },
   { timestamps: true }
 );
