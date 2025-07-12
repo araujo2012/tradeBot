@@ -76,4 +76,28 @@ export class BinanceService {
       };
     }
   }
+
+  async keepAliveListenKey(listenKey: string) {
+    const endpoint = "userDataStream";
+
+    try {
+      const response = await axios.put(`${BASE_URL}${endpoint}`, null, {
+        headers: {
+          "X-MBX-APIKEY": this.apiKey,
+        },
+        params: {
+          listenKey: listenKey,
+        },
+      });
+
+      return { error: false, data: response.data };
+    } catch (error: any) {
+      return {
+        error: true,
+        message: `Error: ${error.response?.status}, ${JSON.stringify(
+          error.response?.data
+        )}`,
+      };
+    }
+  }
 }

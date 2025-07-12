@@ -33,23 +33,28 @@ export const startBinanceConnection = async (req: Request, res: Response) => {
 
     const listenKey = listenKeyResult.data.listenKey;
 
-    await startBinanceSocket({
-      listenKey,
-      userId: _id.toString(),
-      apiKey: user.apiKey,
-      apiSecret: user.apiSecret,
-    });
-
-    await SessionModel.create({
+    // Criar sessão primeiro para obter o sessionId
+    const session = await SessionModel.create({
       userId: user._id,
       listenKey,
       apiKey: user.apiKey,
       apiSecret: user.apiSecret,
     });
 
-    return res
-      .status(200)
-      .json({ message: "Socket started and session saved.", listenKey });
+    const sessionId = (session._id as any).toString();
+
+    await startBinanceSocket({
+      listenKey,
+      sessionId,
+      apiKey: user.apiKey,
+      apiSecret: user.apiSecret,
+    });
+
+    return res.status(200).json({
+      message: "Socket started and session saved.",
+      listenKey,
+      sessionId,
+    });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
