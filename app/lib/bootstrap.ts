@@ -9,11 +9,23 @@ export async function bootstrapSessions() {
   await Promise.all(
     sessions.map(async (session) => {
       const sessionId = (session._id as mongoose.Types.ObjectId).toString();
-      const userId = session.userId.toString();
+
+      // Pular sessões inativas ou sem listenKey
+      if (session.status === "inactive") {
+        console.log(`[Bootstrap] Sessão ${sessionId} está inativa, pulando...`);
+        return;
+      }
+
+      if (!session.listenKey) {
+        console.log(
+          `[Bootstrap] Sessão ${sessionId} sem listenKey, pulando...`
+        );
+        return;
+      }
 
       const socketParams = {
         listenKey: session.listenKey,
-        userId,
+        sessionId,
         apiKey: session.apiKey,
         apiSecret: session.apiSecret,
       };
@@ -38,6 +50,13 @@ export async function bootstrapSessions() {
             `[Bootstrap] Erro ao gerar novo listenKey para ${sessionId}:`,
             newKeyResult.message
           );
+          // Marcar sessão como inativa se não conseguir gerar novo listenKey
+          await SessionModel.findByIdAndUpdate(sessionId, {
+            status: "inactive",
+          });
+          console.log(
+            `[Bootstrap] Sessão ${sessionId} marcada como inativa - falha ao gerar listenKey`
+          );
           return;
         }
 
@@ -47,7 +66,7 @@ export async function bootstrapSessions() {
         try {
           await startBinanceSocket({
             ...socketParams,
-            listenKey: session.listenKey,
+            listenKey: newKeyResult.data.listenKey,
           });
           console.log(
             `[Bootstrap] Reconectado com novo listenKey para ${sessionId}`
@@ -55,6 +74,13 @@ export async function bootstrapSessions() {
         } catch (err) {
           console.error(
             `[Bootstrap] Falha ao reconectar com novo listenKey para ${sessionId}`
+          );
+          // Marcar sessão como inativa se não conseguir conectar com novo listenKey
+          await SessionModel.findByIdAndUpdate(sessionId, {
+            status: "inactive",
+          });
+          console.log(
+            `[Bootstrap] Sessão ${sessionId} marcada como inativa - falha na reconexão`
           );
         }
       }
