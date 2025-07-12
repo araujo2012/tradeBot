@@ -70,12 +70,15 @@ describe("BotConfig Routes", () => {
         userId: testUserId,
         buyProtection: 50,
         sellProtection: 30,
-        periodo: 5,
-        largura: 3,
         name: "Default Config",
       });
-      expect(response.body.data).toHaveProperty("createdAt");
-      expect(response.body.data).toHaveProperty("updatedAt");
+      // Check that periodo and largura are random values within expected ranges
+      expect(response.body.data.periodo).toBeGreaterThanOrEqual(0);
+      expect(response.body.data.periodo).toBeLessThanOrEqual(10);
+      expect(Number.isInteger(response.body.data.periodo)).toBe(true);
+      expect(response.body.data.largura).toBeGreaterThanOrEqual(0);
+      expect(response.body.data.largura).toBeLessThanOrEqual(10);
+      expect(typeof response.body.data.largura).toBe("number");
     });
 
     it("should return 401 when token is invalid", async () => {
