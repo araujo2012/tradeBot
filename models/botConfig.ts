@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IBotConfig extends Document {
+  _id: string;
   userId: string;
   buyProtection: number;
   sellProtection: number;
@@ -15,7 +16,6 @@ const botConfigSchema = new Schema<IBotConfig>(
   {
     userId: {
       type: String,
-      required: true,
       index: true,
     },
     buyProtection: {
@@ -56,7 +56,7 @@ const botConfigSchema = new Schema<IBotConfig>(
   }
 );
 
-export const BotConfig = mongoose.model<IBotConfig>(
+export const BotConfigModel = mongoose.model<IBotConfig>(
   "BotConfig",
   botConfigSchema
 );

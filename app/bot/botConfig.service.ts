@@ -1,11 +1,13 @@
-import { BotConfig, IBotConfig } from "../../models/botConfig";
+import { BotConfigModel, IBotConfig } from "../../models/botConfig";
 
 /**
  * Find default bot configuration by userId
  */
 export async function findDefaultConfig(): Promise<IBotConfig | null> {
   try {
-    const config = await BotConfig.findOne({ userId: "default" });
+    const config = await BotConfigModel.findOne({
+      userId: "default",
+    });
     return config;
   } catch (error) {
     throw new Error(`Error finding default bot config: ${error}`);
@@ -24,7 +26,7 @@ export async function createConfig(configData: {
   name: string;
 }): Promise<IBotConfig> {
   try {
-    const config = new BotConfig(configData);
+    const config = new BotConfigModel(configData);
     return await config.save();
   } catch (error) {
     throw new Error(`Error creating bot config: ${error}`);
@@ -45,10 +47,14 @@ export async function updateConfig(
   }
 ): Promise<IBotConfig | null> {
   try {
-    const config = await BotConfig.findOneAndUpdate({ userId }, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    const config = await BotConfigModel.findOneAndUpdate(
+      { userId },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
     return config;
   } catch (error) {
     throw new Error(`Error updating bot config: ${error}`);
@@ -60,7 +66,7 @@ export async function updateConfig(
  */
 export async function deleteConfig(userId: string): Promise<boolean> {
   try {
-    const result = await BotConfig.deleteOne({ userId });
+    const result = await BotConfigModel.deleteOne({ userId });
     return result.deletedCount > 0;
   } catch (error) {
     throw new Error(`Error deleting bot config: ${error}`);
