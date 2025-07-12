@@ -6,7 +6,6 @@ import sessionRoutes from "./app/session/session.routes";
 import authRoutes from "./app/auth/auth.routes";
 import userRoutes from "./app/user/user.routes";
 import botRoutes from "./app/bot/bot.routes";
-import botConfigRoutes from "./app/bot/botConfig.routes";
 import { authMiddleware } from "./app/auth/auth.middleware";
 
 const typedAuthMiddleware = authMiddleware as RequestHandler;
@@ -21,6 +20,5 @@ app.use("/user", userRoutes);
 app.use("/sessions", typedAuthMiddleware, sessionRoutes);
 app.use("/binance", typedAuthMiddleware, binanceRoutes);
 app.use("/bot", typedAuthMiddleware, botRoutes);
-app.use("/bot", typedAuthMiddleware, botConfigRoutes);
 
 export default app;
