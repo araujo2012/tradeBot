@@ -12,6 +12,11 @@ if (!(global as any).socketMap) {
 const socketMap: Record<string, WebSocket.WebSocket> = (global as any)
   .socketMap;
 
+// Função helper para formatar data/hora
+function getTimestamp(): string {
+  return new Date().toISOString();
+}
+
 async function generateNewListenKey(
   sessionId: string,
   apiKey: string,
@@ -27,7 +32,10 @@ async function generateNewListenKey(
 
     if (!newKeyResult.error) {
       const newListenKey = newKeyResult.data.listenKey;
-      console.log(`[${sessionId}] Novo listenKey gerado:`, newListenKey);
+      console.log(
+        `[${getTimestamp()}] [${sessionId}] Novo listenKey gerado:`,
+        newListenKey
+      );
 
       // Atualizar sessão com novo listenKey
       await SessionModel.findByIdAndUpdate(sessionId, {
@@ -37,13 +45,16 @@ async function generateNewListenKey(
       return newListenKey;
     } else {
       console.error(
-        `[${sessionId}] Erro ao gerar novo listenKey:`,
+        `[${getTimestamp()}] [${sessionId}] Erro ao gerar novo listenKey:`,
         newKeyResult.message
       );
       return null;
     }
   } catch (error) {
-    console.error(`[${sessionId}] Erro ao gerar novo listenKey:`, error);
+    console.error(
+      `[${getTimestamp()}] [${sessionId}] Erro ao gerar novo listenKey:`,
+      error
+    );
     return null;
   }
 }
@@ -55,7 +66,9 @@ async function reconnectSocket(
   apiSecret: string
 ): Promise<boolean> {
   try {
-    console.log(`[${sessionId}] Tentando reconectar com listenKey atual...`);
+    console.log(
+      `[${getTimestamp()}] [${sessionId}] Tentando reconectar com listenKey atual...`
+    );
 
     // Fechar socket antigo se existir
     closeSocket(sessionId);
@@ -68,11 +81,13 @@ async function reconnectSocket(
       apiSecret,
     });
 
-    console.log(`[${sessionId}] Reconectado com sucesso com listenKey atual.`);
+    console.log(
+      `[${getTimestamp()}] [${sessionId}] Reconectado com sucesso com listenKey atual.`
+    );
     return true;
   } catch (error) {
     console.error(
-      `[${sessionId}] Falha ao reconectar com listenKey atual:`,
+      `[${getTimestamp()}] [${sessionId}] Falha ao reconectar com listenKey atual:`,
       error
     );
 
@@ -85,7 +100,9 @@ async function reconnectSocket(
 
     if (newListenKey) {
       try {
-        console.log(`[${sessionId}] Tentando reconectar com novo listenKey...`);
+        console.log(
+          `[${getTimestamp()}] [${sessionId}] Tentando reconectar com novo listenKey...`
+        );
 
         await startBinanceSocket({
           listenKey: newListenKey,
@@ -95,18 +112,20 @@ async function reconnectSocket(
         });
 
         console.log(
-          `[${sessionId}] Reconectado com sucesso com novo listenKey.`
+          `[${getTimestamp()}] [${sessionId}] Reconectado com sucesso com novo listenKey.`
         );
         return true;
       } catch (newError) {
         console.error(
-          `[${sessionId}] Falha ao reconectar com novo listenKey:`,
+          `[${getTimestamp()}] [${sessionId}] Falha ao reconectar com novo listenKey:`,
           newError
         );
         return false;
       }
     } else {
-      console.error(`[${sessionId}] Não foi possível gerar novo listenKey.`);
+      console.error(
+        `[${getTimestamp()}] [${sessionId}] Não foi possível gerar novo listenKey.`
+      );
       return false;
     }
   }
@@ -131,12 +150,16 @@ async function keepSocketAlive(
 
     if (result.error) {
       console.error(
-        `[${sessionId}] Erro no keep-alive (tentativa ${retryCount + 1}):`,
+        `[${getTimestamp()}] [${sessionId}] Erro no keep-alive (tentativa ${
+          retryCount + 1
+        }):`,
         result.message
       );
 
       if (retryCount < MAX_RETRIES) {
-        console.log(`[${sessionId}] Tentando novamente em 5 segundos...`);
+        console.log(
+          `[${getTimestamp()}] [${sessionId}] Tentando novamente em 5 segundos...`
+        );
         setTimeout(() => {
           keepSocketAlive(
             sessionId,
@@ -148,7 +171,7 @@ async function keepSocketAlive(
         }, 5000);
       } else {
         console.error(
-          `[${sessionId}] Máximo de tentativas atingido. Gerando novo listenKey e iniciando nova conexão...`
+          `[${getTimestamp()}] [${sessionId}] Máximo de tentativas atingido. Gerando novo listenKey e iniciando nova conexão...`
         );
 
         const newListenKey = await generateNewListenKey(
@@ -168,7 +191,7 @@ async function keepSocketAlive(
           });
         } else {
           console.error(
-            `[${sessionId}] Falha ao gerar novo listenKey. Marcando sessão como inativa.`
+            `[${getTimestamp()}] [${sessionId}] Falha ao gerar novo listenKey. Marcando sessão como inativa.`
           );
           await SessionModel.findByIdAndUpdate(sessionId, {
             status: "inactive",
@@ -176,12 +199,17 @@ async function keepSocketAlive(
         }
       }
     } else {
-      console.log(`[${sessionId}] Keep-alive enviado com sucesso.`);
+      console.log(
+        `[${getTimestamp()}] [${sessionId}] Keep-alive enviado com sucesso.`
+      );
     }
   } catch (error) {
-    console.error(`[${sessionId}] Erro ao enviar keep-alive:`, error);
     console.error(
-      `[${sessionId}] Gerando novo listenKey e iniciando nova conexão...`
+      `[${getTimestamp()}] [${sessionId}] Erro ao enviar keep-alive:`,
+      error
+    );
+    console.error(
+      `[${getTimestamp()}] [${sessionId}] Gerando novo listenKey e iniciando nova conexão...`
     );
 
     const newListenKey = await generateNewListenKey(
@@ -201,7 +229,7 @@ async function keepSocketAlive(
       });
     } else {
       console.error(
-        `[${sessionId}] Falha ao gerar novo listenKey. Marcando sessão como inativa.`
+        `[${getTimestamp()}] [${sessionId}] Falha ao gerar novo listenKey. Marcando sessão como inativa.`
       );
       await SessionModel.findByIdAndUpdate(sessionId, {
         status: "inactive",
@@ -224,7 +252,7 @@ export function startBinanceSocket({
     );
 
     ws.on("open", () => {
-      console.log(`[${sessionId}] WebSocket aberto.`);
+      console.log(`[${getTimestamp()}] [${sessionId}] WebSocket aberto.`);
       socketMap[sessionId] = ws;
       resolve();
 
@@ -238,19 +266,27 @@ export function startBinanceSocket({
 
     ws.on("message", async (data: WebSocket.RawData) => {
       const message = data.toString();
-      console.log(`[${sessionId}] Mensagem recebida:`, message);
+      console.log(
+        `[${getTimestamp()}] [${sessionId}] Mensagem recebida:`,
+        message
+      );
 
       try {
         const channel = getRabbitChannel();
         channel.sendToQueue("messages", Buffer.from(message));
-        console.log(`[${sessionId}] Mensagem enviada para RabbitMQ.`);
+        console.log(
+          `[${getTimestamp()}] [${sessionId}] Mensagem enviada para RabbitMQ.`
+        );
       } catch (err) {
-        console.error(`[${sessionId}] Erro ao enviar para fila RabbitMQ:`, err);
+        console.error(
+          `[${getTimestamp()}] [${sessionId}] Erro ao enviar para fila RabbitMQ:`,
+          err
+        );
       }
     });
 
     ws.on("close", async () => {
-      console.log(`[${sessionId}] WebSocket fechado.`);
+      console.log(`[${getTimestamp()}] [${sessionId}] WebSocket fechado.`);
 
       // Mudar status da sessão para inativo quando o socket fechar
       try {
@@ -258,21 +294,26 @@ export function startBinanceSocket({
           status: "inactive",
         });
         console.log(
-          `[${sessionId}] Sessão marcada como inativa - socket fechado.`
+          `[${getTimestamp()}] [${sessionId}] Sessão marcada como inativa - socket fechado.`
         );
       } catch (err) {
         console.error(
-          `[${sessionId}] Erro ao atualizar status da sessão:`,
+          `[${getTimestamp()}] [${sessionId}] Erro ao atualizar status da sessão:`,
           err
         );
       }
     });
 
     ws.on("error", async (err: Error) => {
-      console.error(`[${sessionId}] Erro no WebSocket:`, err);
+      console.error(
+        `[${getTimestamp()}] [${sessionId}] Erro no WebSocket:`,
+        err
+      );
 
       // Tentar reconectar automaticamente
-      console.log(`[${sessionId}] Tentando reconectar após erro...`);
+      console.log(
+        `[${getTimestamp()}] [${sessionId}] Tentando reconectar após erro...`
+      );
       const reconnectSuccess = await reconnectSocket(
         sessionId,
         listenKey,
@@ -282,18 +323,18 @@ export function startBinanceSocket({
 
       if (!reconnectSuccess) {
         console.error(
-          `[${sessionId}] Falha na reconexão após erro. Marcando sessão como inativa.`
+          `[${getTimestamp()}] [${sessionId}] Falha na reconexão após erro. Marcando sessão como inativa.`
         );
         try {
           await SessionModel.findByIdAndUpdate(sessionId, {
             status: "inactive",
           });
           console.log(
-            `[${sessionId}] Sessão marcada como inativa - erro no WebSocket.`
+            `[${getTimestamp()}] [${sessionId}] Sessão marcada como inativa - erro no WebSocket.`
           );
         } catch (updateErr) {
           console.error(
-            `[${sessionId}] Erro ao atualizar status da sessão:`,
+            `[${getTimestamp()}] [${sessionId}] Erro ao atualizar status da sessão:`,
             updateErr
           );
         }
@@ -310,10 +351,15 @@ export function closeSocket(sessionId: string): boolean {
     try {
       socket.close();
       delete socketMap[sessionId];
-      console.log(`[${sessionId}] WebSocket connection closed manually`);
+      console.log(
+        `[${getTimestamp()}] [${sessionId}] WebSocket connection closed manually`
+      );
       return true;
     } catch (error) {
-      console.error(`[${sessionId}] Error closing WebSocket:`, error);
+      console.error(
+        `[${getTimestamp()}] [${sessionId}] Error closing WebSocket:`,
+        error
+      );
       return false;
     }
   }

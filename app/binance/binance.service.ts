@@ -65,7 +65,6 @@ export class BinanceService {
           "X-MBX-APIKEY": this.apiKey,
         },
       });
-
       return { error: false, data: response.data };
     } catch (error: any) {
       return {
