@@ -4,7 +4,10 @@ import { BinanceService } from "../binance/binance.service";
 
 export class SessionService {
   async getSessions(userId: string) {
-    return await SessionModel.find({ userId });
+    const sessions = await SessionModel.find({ userId }).select(
+      "-apiKey -apiSecret"
+    );
+    return sessions;
   }
 
   async createSession(userId: string, sessionData: any) {
@@ -12,9 +15,20 @@ export class SessionService {
   }
 
   async updateSession(sessionId: string, userId: string, updateData: any) {
+    // Permitir apenas atualização de name e limit
+    const allowedFields = ["name", "limit"];
+    const safeUpdateData: any = {};
+
+    // Filtrar apenas os campos permitidos
+    for (const field of allowedFields) {
+      if (updateData[field] !== undefined) {
+        safeUpdateData[field] = updateData[field];
+      }
+    }
+
     const session = await SessionModel.findOneAndUpdate(
       { _id: sessionId, userId },
-      updateData,
+      safeUpdateData,
       { new: true }
     );
 
@@ -109,7 +123,6 @@ export class SessionService {
   }
 
   async stopSession(sessionId: string, userId: string) {
-    // Buscar a sessão
     const session = await SessionModel.findOne({ _id: sessionId, userId });
     if (!session) {
       throw new Error("Session not found");
