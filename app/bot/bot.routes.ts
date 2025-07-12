@@ -10,11 +10,11 @@ import {
 
 const router = Router();
 
-router.get("/bots", getBotsByUser as RequestHandler);
-router.post("/bots", createBot as RequestHandler);
-router.put("/bots/:botId", updateBot as RequestHandler);
-router.post("/bot/:botId/start", startBot as RequestHandler);
-router.post("/bot/:botId/stop", stopBot as RequestHandler);
-router.post("/bot/:botId/archive", archiveBot as RequestHandler);
+router.get("/", getBotsByUser as RequestHandler);
+router.post("/", createBot as RequestHandler);
+router.put("/:botId", updateBot as RequestHandler);
+router.post("/:botId/start", startBot as RequestHandler);
+router.post("/:botId/stop", stopBot as RequestHandler);
+router.post("/:botId/archive", archiveBot as RequestHandler);
 
 export default router;
