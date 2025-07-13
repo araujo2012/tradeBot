@@ -2,7 +2,7 @@ import * as WebSocket from "ws";
 import { getRabbitChannel } from "../lib/rabbit";
 import { StartBinanceSocketParams } from "./binance.interface";
 import { SessionModel } from "../../models/session";
-import { BinanceService } from "./binance.service";
+import { getBinanceListenKey, keepAliveListenKey } from "./binance.service";
 
 // Tornar socketMap globalmente acessível
 if (!(global as any).socketMap) {
@@ -23,12 +23,7 @@ async function generateNewListenKey(
   apiSecret: string
 ): Promise<string | null> {
   try {
-    const binanceService = new BinanceService({
-      apiKey: apiKey || "",
-      apiSecret: apiSecret || "",
-    });
-
-    const newKeyResult = await binanceService.getBinanceListenKey();
+    const newKeyResult = await getBinanceListenKey(apiKey, apiSecret);
 
     if (!newKeyResult.error) {
       const newListenKey = newKeyResult.data.listenKey;
@@ -141,12 +136,7 @@ async function keepSocketAlive(
   const MAX_RETRIES = 10;
 
   try {
-    const binanceService = new BinanceService({
-      apiKey: apiKey || "",
-      apiSecret: apiSecret || "",
-    });
-
-    const result = await binanceService.keepAliveListenKey(listenKey);
+    const result = await keepAliveListenKey(listenKey);
 
     if (result.error) {
       console.error(

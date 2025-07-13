@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { UserModel } from "../../models/user";
-import { BinanceService } from "./binance.service";
+import { getBinanceListenKey } from "./binance.service";
 import { startBinanceSocket } from "./binance.socket";
 import { SessionModel } from "../../models/session";
 
@@ -20,12 +20,10 @@ export const startBinanceConnection = async (req: Request, res: Response) => {
         .json({ error: "User or API credentials not found." });
     }
 
-    const service = new BinanceService({
-      apiKey: user.apiKey,
-      apiSecret: user.apiSecret,
-    });
-
-    const listenKeyResult = await service.getBinanceListenKey();
+    const listenKeyResult = await getBinanceListenKey(
+      user.apiKey,
+      user.apiSecret
+    );
 
     if (listenKeyResult.error) {
       return res.status(500).json({ error: listenKeyResult.message });

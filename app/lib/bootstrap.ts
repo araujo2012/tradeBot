@@ -1,5 +1,5 @@
 import { SessionModel } from "../../models/session";
-import { BinanceService } from "../binance/binance.service";
+import { getBinanceListenKey } from "../binance/binance.service";
 import { startBinanceSocket } from "../binance/binance.socket";
 import mongoose from "mongoose";
 
@@ -38,12 +38,10 @@ export async function bootstrapSessions() {
           `[Bootstrap] ListenKey inválido para ${sessionId}. Tentando regenerar...`
         );
 
-        const service = new BinanceService({
-          apiKey: session.apiKey,
-          apiSecret: session.apiSecret,
-        });
-
-        const newKeyResult = await service.getBinanceListenKey();
+        const newKeyResult = await getBinanceListenKey(
+          session.apiKey,
+          session.apiSecret
+        );
 
         if (newKeyResult.error) {
           console.error(
