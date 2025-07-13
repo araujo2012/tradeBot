@@ -21,9 +21,15 @@ export async function createConfig(configData: {
   userId: string;
   buyProtection: number;
   sellProtection: number;
-  periodo: number;
-  largura: number;
+  period: number;
+  width: number;
   name: string;
+  buySpeed: number;
+  sellSpeed: number;
+  limit: number;
+  brl: number;
+  crypto: number;
+  cryptoTarget: number;
 }): Promise<IBotConfig> {
   try {
     const config = new BotConfigModel(configData);
@@ -41,9 +47,15 @@ export async function updateConfig(
   updateData: {
     buyProtection?: number;
     sellProtection?: number;
-    periodo?: number;
-    largura?: number;
+    period?: number;
+    width?: number;
     name?: string;
+    buySpeed?: number;
+    sellSpeed?: number;
+    limit?: number;
+    brl?: number;
+    crypto?: number;
+    cryptoTarget?: number;
   }
 ): Promise<IBotConfig | null> {
   try {

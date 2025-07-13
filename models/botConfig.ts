@@ -10,6 +10,10 @@ export interface IBotConfig extends Document {
   name: string;
   buySpeed: number;
   sellSpeed: number;
+  limit: number;
+  brl: number;
+  crypto: number;
+  cryptoTarget: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -65,6 +69,26 @@ const botConfigSchema = new Schema<IBotConfig>(
     name: {
       type: String,
       required: true,
+    },
+    limit: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    brl: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    crypto: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    cryptoTarget: {
+      type: Number,
+      required: true,
+      default: 0,
     },
   },
   {
