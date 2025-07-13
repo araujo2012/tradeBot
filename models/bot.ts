@@ -12,6 +12,10 @@ export interface BotDocument extends Document {
   sellProtection: number;
   period: number;
   width: number;
+  limit: number;
+  brl: number;
+  crypto: number;
+  cryptoTarget: number;
 }
 
 const botSchema = new Schema<BotDocument>(
@@ -70,6 +74,26 @@ const botSchema = new Schema<BotDocument>(
       min: 0,
       max: 1,
       default: 0.618,
+    },
+    limit: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    brl: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    crypto: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    cryptoTarget: {
+      type: Number,
+      required: true,
+      default: 0,
     },
   },
   { timestamps: true }

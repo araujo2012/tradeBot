@@ -1,6 +1,7 @@
 import { BotModel } from "../../models/bot";
 import { SessionModel } from "../../models/session";
 import mongoose from "mongoose";
+import { onBotStart, onBotStop } from "./bot.bootstrap";
 
 export class BotService {
   async getBotsByUser(userId: string) {
@@ -26,6 +27,7 @@ export class BotService {
       status: "active",
     });
     if (!session) throw new Error("Session for this bot is not active");
+    await onBotStart(botId);
     bot.status = "active";
     await bot.save();
     return bot;
@@ -34,6 +36,7 @@ export class BotService {
   async stopBot(botId: string, userId: string) {
     const bot = await BotModel.findOne({ _id: botId, userId });
     if (!bot) throw new Error("Bot not found");
+    await onBotStop(botId);
     bot.status = "inactive";
     await bot.save();
     return bot;
