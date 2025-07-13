@@ -89,3 +89,66 @@ export async function keepAliveListenKey(listenKey: string) {
     };
   }
 }
+
+export async function createOrder(
+  symbol: string,
+  side: "BUY" | "SELL",
+  type:
+    | "LIMIT"
+    | "MARKET"
+    | "STOP_LOSS"
+    | "STOP_LOSS_LIMIT"
+    | "TAKE_PROFIT"
+    | "TAKE_PROFIT_LIMIT"
+    | "LIMIT_MAKER",
+  apiKey: string,
+  apiSecret: string,
+  options: {
+    timeInForce?: "GTC" | "IOC" | "FOK" | "GTX";
+    quantity?: number;
+    quoteOrderQty?: number;
+    price?: number;
+    newClientOrderId?: string;
+    strategyId?: number;
+    strategyType?: number;
+    stopPrice?: number;
+    trailingDelta?: number;
+    icebergQty?: number;
+    newOrderRespType?: "ACK" | "RESULT" | "FULL";
+    selfTradePreventionMode?:
+      | "EXPIRE_TAKER"
+      | "EXPIRE_MAKER"
+      | "EXPIRE_BOTH"
+      | "NONE";
+    recvWindow?: number;
+  } = {}
+) {
+  const endpoint = "order";
+  const timestamp = Date.now();
+
+  const params = {
+    symbol,
+    side,
+    type,
+    timestamp,
+    ...options,
+  };
+
+  try {
+    const response = await axios.post(`${BASE_URL}${endpoint}`, null, {
+      headers: {
+        "X-MBX-APIKEY": apiKey,
+      },
+      params,
+    });
+
+    return { error: false, data: response.data };
+  } catch (error: any) {
+    return {
+      error: true,
+      message: `Error: ${error.response?.status}, ${JSON.stringify(
+        error.response?.data
+      )}`,
+    };
+  }
+}

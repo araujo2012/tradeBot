@@ -1,6 +1,6 @@
 import { SessionModel } from "../../models/session";
 import { startBinanceSocket, closeSocket } from "../binance/binance.socket";
-import { BinanceService } from "../binance/binance.service";
+import { getBinanceListenKey } from "../binance/binance.service";
 
 export class SessionService {
   async getSessions(userId: string) {
@@ -83,12 +83,10 @@ export class SessionService {
     }
 
     // Gerar novo listenKey
-    const binanceService = new BinanceService({
-      apiKey: session.apiKey,
-      apiSecret: session.apiSecret,
-    });
-
-    const listenKeyResult = await binanceService.getBinanceListenKey();
+    const listenKeyResult = await getBinanceListenKey(
+      session.apiKey,
+      session.apiSecret
+    );
     if (listenKeyResult.error) {
       throw new Error(
         `Failed to generate listenKey: ${listenKeyResult.message}`
@@ -137,6 +135,7 @@ export class SessionService {
     // Atualizar status da sessão para inactive
     await SessionModel.findByIdAndUpdate(sessionId, {
       status: "inactive",
+      listenKey: null,
     });
 
     return { message: "Session stopped successfully" };
