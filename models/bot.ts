@@ -6,6 +6,12 @@ export interface BotDocument extends Document {
   userId: mongoose.Types.ObjectId;
   symbol: "BTCBRL" | "ETHBRL" | "USDTBRL" | "BNBBRL" | "SOLBRL" | "XRPBRL";
   status: "active" | "inactive" | "archive";
+  buySpeed: number;
+  sellSpeed: number;
+  buyProtection: number;
+  sellProtection: number;
+  period: number;
+  width: number;
 }
 
 const botSchema = new Schema<BotDocument>(
@@ -22,6 +28,48 @@ const botSchema = new Schema<BotDocument>(
       type: String,
       enum: ["active", "inactive", "archive"],
       default: "inactive",
+    },
+    buyProtection: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 100,
+      default: 35,
+    },
+    sellProtection: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 100,
+      default: 35,
+    },
+    period: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 10,
+      default: 1,
+    },
+    width: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 10,
+      default: 5,
+    },
+    buySpeed: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 1,
+      default: 0.618,
+    },
+    sellSpeed: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 1,
+      default: 0.618,
     },
   },
   { timestamps: true }

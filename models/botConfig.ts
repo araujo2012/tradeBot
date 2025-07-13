@@ -8,6 +8,8 @@ export interface IBotConfig extends Document {
   period: number;
   width: number;
   name: string;
+  buySpeed: number;
+  sellSpeed: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,28 +25,42 @@ const botConfigSchema = new Schema<IBotConfig>(
       required: true,
       min: 0,
       max: 100,
-      default: 0,
+      default: 35,
     },
     sellProtection: {
       type: Number,
       required: true,
       min: 0,
       max: 100,
-      default: 0,
+      default: 35,
     },
     period: {
       type: Number,
       required: true,
       min: 0,
       max: 10,
-      default: 0,
+      default: 1,
     },
     width: {
       type: Number,
       required: true,
       min: 0,
       max: 10,
-      default: 0,
+      default: 5,
+    },
+    buySpeed: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 1,
+      default: 0.618,
+    },
+    sellSpeed: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 1,
+      default: 0.618,
     },
     name: {
       type: String,
