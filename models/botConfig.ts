@@ -5,8 +5,8 @@ export interface IBotConfig extends Document {
   userId: string;
   buyProtection: number;
   sellProtection: number;
-  periodo: number;
-  largura: number;
+  period: number;
+  width: number;
   name: string;
   createdAt: Date;
   updatedAt: Date;
@@ -32,14 +32,14 @@ const botConfigSchema = new Schema<IBotConfig>(
       max: 100,
       default: 0,
     },
-    periodo: {
+    period: {
       type: Number,
       required: true,
       min: 0,
       max: 10,
       default: 0,
     },
-    largura: {
+    width: {
       type: Number,
       required: true,
       min: 0,
