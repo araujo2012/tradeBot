@@ -1,5 +1,4 @@
 import { SessionModel } from "../../models/session";
-import { startBinanceSocket, closeSocket } from "../binance/binance.socket";
 import { getBinanceListenKey } from "../binance/binance.service";
 
 export class SessionService {
@@ -58,59 +57,24 @@ export class SessionService {
       throw new Error("Session not found");
     }
 
-    // Verificar se já tem listenKey
-    if (session.listenKey) {
-      try {
-        // Tentar conectar com o listenKey existente
-        await startBinanceSocket({
-          listenKey: session.listenKey,
-          sessionId: sessionId,
-          apiKey: session.apiKey,
-          apiSecret: session.apiSecret,
-        });
+    // Iniciar conexão WebSocket
+    try {
+      const { socketLogon } = await import(
+        "../binance/binance.socket.requests"
+      );
+      const logonResult = await socketLogon(session.apiKey);
 
-        // Se chegou aqui, a conexão foi bem-sucedida
-        await SessionModel.findByIdAndUpdate(sessionId, {
-          status: "active",
-        });
-
-        return { message: "Session started successfully" };
-      } catch (error) {
-        console.log(
-          "Failed to connect with existing listenKey, trying to generate new one"
+      if (logonResult.code && logonResult.code !== 0) {
+        throw new Error(
+          `Binance logon error: ${logonResult.msg || logonResult.code}`
         );
       }
-    }
 
-    // Gerar novo listenKey
-    const listenKeyResult = await getBinanceListenKey(
-      session.apiKey,
-      session.apiSecret
-    );
-    if (listenKeyResult.error) {
-      throw new Error(
-        `Failed to generate listenKey: ${listenKeyResult.message}`
-      );
-    }
-
-    const newListenKey = listenKeyResult.data.listenKey;
-
-    // Tentar conectar com o novo listenKey
-    try {
-      await startBinanceSocket({
-        listenKey: newListenKey,
-        sessionId: sessionId,
-        apiKey: session.apiKey,
-        apiSecret: session.apiSecret,
-      });
-
-      // Atualizar sessão com novo listenKey e status ativo
       await SessionModel.findByIdAndUpdate(sessionId, {
-        listenKey: newListenKey,
         status: "active",
       });
 
-      return { message: "Session started successfully" };
+      return { message: "Session started successfully (WebSocket logon)" };
     } catch (error) {
       throw new Error(
         `Failed to connect to Binance WebSocket: ${
@@ -124,12 +88,6 @@ export class SessionService {
     const session = await SessionModel.findOne({ _id: sessionId, userId });
     if (!session) {
       throw new Error("Session not found");
-    }
-
-    // Encerrar a conexão do socket
-    const socketClosed = closeSocket(sessionId);
-    if (!socketClosed) {
-      throw new Error("Failed to close WebSocket connection");
     }
 
     // Atualizar status da sessão para inactive
