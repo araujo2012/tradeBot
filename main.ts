@@ -3,7 +3,7 @@ import { connectToDatabase } from "./app/lib/database";
 import { connectToRabbitMQ } from "./app/lib/rabbit";
 import { initializeBinanceSocket } from "./app/binance/binance.socket";
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 (async () => {
   try {

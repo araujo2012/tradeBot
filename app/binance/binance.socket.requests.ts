@@ -9,7 +9,7 @@ import { redis } from "../lib/redis";
 // Lê e prepara a chave privada Ed25519
 const PRIVATE_KEY_PATH = path.resolve(
   __dirname,
-  "../../../scripts/private_key.pem"
+  "../../scripts/private_key.pem"
 );
 const privateKeyPem = readFileSync(PRIVATE_KEY_PATH, "utf8");
 const privateKey = crypto.createPrivateKey({
@@ -22,6 +22,7 @@ const privateKey = crypto.createPrivateKey({
 function signPayload(params: Record<string, string | number>): string {
   const sortedKeys = Object.keys(params).sort();
   const payload = sortedKeys.map((key) => `${key}=${params[key]}`).join("&");
+  console.log({ payload });
   const signature = crypto.sign(
     null,
     Buffer.from(payload, "ascii"),
@@ -53,20 +54,15 @@ export async function socketLogon(apiKey: string): Promise<any> {
 
   const offset = await getOrSetOffset();
   const timestamp = Date.now() - offset;
-
-  const params = {
-    apiKey,
-    timestamp,
-  };
-
-  const signature = signPayload(params);
+  const signature = signPayload({ apiKey, timestamp });
 
   const message = {
     id: crypto.randomUUID(),
     method: "session.logon",
     params: {
-      ...params,
+      apiKey,
       signature,
+      timestamp,
     },
   };
 

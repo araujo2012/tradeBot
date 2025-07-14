@@ -7,10 +7,12 @@ import authRoutes from "./app/auth/auth.routes";
 import userRoutes from "./app/user/user.routes";
 import botRoutes from "./app/bot/bot.routes";
 import { authMiddleware } from "./app/auth/auth.middleware";
-
+import dotenv from "dotenv";
+dotenv.config();
 const typedAuthMiddleware = authMiddleware as RequestHandler;
 
 const app = express();
+
 app.use(cors({ origin: process.env.FRONTEND_URL }));
 
 app.use(express.json());

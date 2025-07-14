@@ -1,33 +1,15 @@
-import mongoose, { Document, Schema } from "mongoose";
+import { Schema, model } from "mongoose";
 
-export interface SessionDocument extends Document {
-  userId: mongoose.Types.ObjectId;
-  listenKey?: string;
-  apiKey: string;
-  apiSecret: string;
-  limit: number;
-  status: "active" | "inactive";
-  name?: string;
-}
-
-const sessionSchema = new Schema<SessionDocument>(
+const sessionSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     listenKey: { type: String },
     apiKey: { type: String, required: true },
-    apiSecret: { type: String, required: true },
-    limit: { type: Number, required: true },
-    status: {
-      type: String,
-      enum: ["active", "inactive"],
-      default: "inactive",
-    },
+    status: { type: String, enum: ["active", "inactive"], default: "inactive" },
     name: { type: String },
+    limit: { type: Number },
   },
   { timestamps: true }
 );
 
-export const SessionModel = mongoose.model<SessionDocument>(
-  "Session",
-  sessionSchema
-);
+export const SessionModel = model("Session", sessionSchema);
