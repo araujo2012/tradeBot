@@ -1,5 +1,7 @@
 import { SessionModel } from "../../models/session";
-import { getBinanceListenKey } from "../binance/binance.service";
+import { socketUserStream } from "../binance/binance.socket.requests";
+import { initializeBinanceSocket } from "../binance/binance.socket";
+import { socketLogon } from "../binance/binance.socket.requests";
 
 export class SessionService {
   async getSessions(userId: string) {
@@ -53,16 +55,11 @@ export class SessionService {
 
   async startSession(sessionId: string, userId: string) {
     const session = await SessionModel.findOne({ _id: sessionId, userId });
-    if (!session) {
-      throw new Error("Session not found");
-    }
+    if (!session) throw new Error("Session not found");
 
-    // Iniciar conexão WebSocket
     try {
-      const { socketLogon } = await import(
-        "../binance/binance.socket.requests"
-      );
-      const logonResult = await socketLogon(session.apiKey);
+      await initializeBinanceSocket(userId);
+      const logonResult = await socketLogon(session.apiKey, userId);
 
       if (logonResult.code && logonResult.code !== 0) {
         throw new Error(
@@ -70,9 +67,9 @@ export class SessionService {
         );
       }
 
-      await SessionModel.findByIdAndUpdate(sessionId, {
-        status: "active",
-      });
+      await socketUserStream(userId);
+
+      await SessionModel.findByIdAndUpdate(sessionId, { status: "active" });
 
       return { message: "Session started successfully (WebSocket logon)" };
     } catch (error) {

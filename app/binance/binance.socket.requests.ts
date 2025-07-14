@@ -22,7 +22,6 @@ const privateKey = crypto.createPrivateKey({
 function signPayload(params: Record<string, string | number>): string {
   const sortedKeys = Object.keys(params).sort();
   const payload = sortedKeys.map((key) => `${key}=${params[key]}`).join("&");
-  console.log({ payload });
   const signature = crypto.sign(
     null,
     Buffer.from(payload, "ascii"),
@@ -44,9 +43,50 @@ async function getOrSetOffset(): Promise<number> {
   return offset;
 }
 
+export async function socketUserStream(userId: string): Promise<any> {
+  const socket = getBinanceSocket(userId);
+
+  if (!socket || socket.readyState !== socket.OPEN) {
+    throw new Error("WebSocket is not connected");
+  }
+
+  const message = {
+    id: crypto.randomUUID(),
+    method: "userDataStream.subscribe",
+  };
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(
+        new Error("Timeout waiting for response from Binance (user stream)")
+      );
+    }, 5000);
+
+    const handleMessage = (data: Buffer) => {
+      try {
+        const parsed = JSON.parse(data.toString());
+        if (parsed.id !== message.id) return;
+
+        clearTimeout(timeout);
+        socket.off("message", handleMessage);
+
+        resolve(parsed);
+      } catch {
+        // ignorar mensagens inválidas
+      }
+    };
+
+    socket.on("message", handleMessage);
+    socket.send(JSON.stringify(message));
+  });
+}
+
 // Realiza o session.logon via WebSocket
-export async function socketLogon(apiKey: string): Promise<any> {
-  const socket = getBinanceSocket();
+export async function socketLogon(
+  apiKey: string,
+  userId: string
+): Promise<any> {
+  const socket = getBinanceSocket(userId);
 
   if (!socket || socket.readyState !== socket.OPEN) {
     throw new Error("WebSocket is not connected");
@@ -59,14 +99,9 @@ export async function socketLogon(apiKey: string): Promise<any> {
   const message = {
     id: crypto.randomUUID(),
     method: "session.logon",
-    params: {
-      apiKey,
-      signature,
-      timestamp,
-    },
+    params: { apiKey, signature, timestamp },
   };
 
-  // Envia e aguarda resposta (com timeout)
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(new Error("Timeout waiting for response from Binance"));
@@ -75,13 +110,11 @@ export async function socketLogon(apiKey: string): Promise<any> {
     const handleMessage = async (data: Buffer) => {
       try {
         const parsed = JSON.parse(data.toString());
-
         if (parsed.id !== message.id) return;
 
         clearTimeout(timeout);
         socket.off("message", handleMessage);
 
-        // Se erro relacionado a timestamp, invalida cache no Redis
         if (parsed.code && typeof parsed.code === "number") {
           const msg = parsed.msg?.toLowerCase() || "";
           if (msg.includes("timestamp") || parsed.code === -1021) {
@@ -91,7 +124,7 @@ export async function socketLogon(apiKey: string): Promise<any> {
 
         resolve(parsed);
       } catch {
-        // ignorar mensagens não parseáveis
+        // ignorar mensagens inválidas
       }
     };
 
