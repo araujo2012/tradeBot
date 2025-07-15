@@ -16,6 +16,7 @@ export interface BotDocument extends Document {
   brl: number;
   crypto: number;
   cryptoTarget: number;
+  profit: number;
 }
 
 const botSchema = new Schema<BotDocument>(
@@ -95,6 +96,7 @@ const botSchema = new Schema<BotDocument>(
       required: true,
       default: 0,
     },
+    profit: { type: Number, required: true, default: 1 },
   },
   { timestamps: true }
 );
