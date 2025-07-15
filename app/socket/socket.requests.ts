@@ -2,7 +2,7 @@ import axios from "axios";
 import crypto from "crypto";
 import { readFileSync } from "fs";
 import path from "path";
-import { getBinanceSocket } from "./binance.socket";
+import { getBinanceSocket } from "./socket.main";
 import { SessionModel } from "../../models/session";
 import { redis } from "../lib/redis";
 

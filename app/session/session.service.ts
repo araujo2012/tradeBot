@@ -1,7 +1,7 @@
 import { SessionModel } from "../../models/session";
-import { socketUserStream } from "../binance/binance.socket.requests";
-import { initializeBinanceSocket } from "../binance/binance.socket";
-import { socketLogon } from "../binance/binance.socket.requests";
+import { socketUserStream } from "../socket/socket.requests";
+import { initializeBinanceSocket } from "../socket/socket.main";
+import { socketLogon } from "../socket/socket.requests";
 import { getRabbitChannel } from "../lib/rabbit";
 
 export class SessionService {
