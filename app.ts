@@ -1,7 +1,6 @@
 // src/app.ts (ou apenas app.ts na raiz)
 import express, { RequestHandler } from "express";
 import cors from "cors";
-import binanceRoutes from "./app/binance/binance.route";
 import sessionRoutes from "./app/session/session.routes";
 import authRoutes from "./app/auth/auth.routes";
 import userRoutes from "./app/user/user.routes";
@@ -20,7 +19,6 @@ app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/sessions", typedAuthMiddleware, sessionRoutes);
-app.use("/binance", typedAuthMiddleware, binanceRoutes);
 app.use("/bot", typedAuthMiddleware, botRoutes);
 
 export default app;
