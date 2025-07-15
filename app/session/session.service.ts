@@ -2,6 +2,7 @@ import { SessionModel } from "../../models/session";
 import { socketUserStream } from "../binance/binance.socket.requests";
 import { initializeBinanceSocket } from "../binance/binance.socket";
 import { socketLogon } from "../binance/binance.socket.requests";
+import { getRabbitChannel } from "../lib/rabbit";
 
 export class SessionService {
   async getSessions(userId: string) {
@@ -54,45 +55,30 @@ export class SessionService {
   }
 
   async startSession(sessionId: string, userId: string) {
-    const session = await SessionModel.findOne({ _id: sessionId, userId });
-    if (!session) throw new Error("Session not found");
-
-    try {
-      await initializeBinanceSocket(userId);
-      const logonResult = await socketLogon(session.apiKey, userId);
-
-      if (logonResult.code && logonResult.code !== 0) {
-        throw new Error(
-          `Binance logon error: ${logonResult.msg || logonResult.code}`
-        );
-      }
-
-      await socketUserStream(userId);
-
-      await SessionModel.findByIdAndUpdate(sessionId, { status: "active" });
-
-      return { message: "Session started successfully (WebSocket logon)" };
-    } catch (error) {
-      throw new Error(
-        `Failed to connect to Binance WebSocket: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-    }
+    // Envia para a fila RabbitMQ ao invés de executar diretamente
+    const channel = getRabbitChannel();
+    const message = {
+      action: "startSession",
+      sessionId,
+      userId,
+    };
+    channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
+      persistent: true,
+    });
+    return { message: "Session start request sent to queue" };
   }
 
   async stopSession(sessionId: string, userId: string) {
-    const session = await SessionModel.findOne({ _id: sessionId, userId });
-    if (!session) {
-      throw new Error("Session not found");
-    }
-
-    // Atualizar status da sessão para inactive
-    await SessionModel.findByIdAndUpdate(sessionId, {
-      status: "inactive",
-      listenKey: null,
+    // Envia para a fila RabbitMQ ao invés de executar diretamente
+    const channel = getRabbitChannel();
+    const message = {
+      action: "stopSession",
+      sessionId,
+      userId,
+    };
+    channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
+      persistent: true,
     });
-
-    return { message: "Session stopped successfully" };
+    return { message: "Session stop request sent to queue" };
   }
 }
