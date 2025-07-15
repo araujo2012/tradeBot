@@ -3,42 +3,59 @@ import { SessionModel } from "../../models/session";
 import { initializeBinanceSocket } from "./socket.main";
 import { socketLogon, socketUserStream } from "./socket.requests";
 import { getBinanceSocket } from "./socket.main";
+import { sendToUser } from "../../websocket";
 
 // Função para processar startSession
 async function handleStartSession(sessionId: string, userId: string) {
-  const session = await SessionModel.findOne({ _id: sessionId, userId });
-  if (!session) throw new Error("Session not found");
+  try {
+    const session = await SessionModel.findOne({ _id: sessionId, userId });
+    if (!session) throw new Error("Session not found");
 
-  let socket = getBinanceSocket(userId);
-  if (!socket) {
-    await initializeBinanceSocket(userId);
-    socket = getBinanceSocket(userId);
-  }
+    let socket = getBinanceSocket(userId);
+    if (!socket) {
+      await initializeBinanceSocket(userId);
+      socket = getBinanceSocket(userId);
+    }
 
-  const logonResult = await socketLogon(session.apiKey, userId);
-  if (logonResult.code && logonResult.code !== 0) {
-    throw new Error(
-      `Binance logon error: ${logonResult.msg || logonResult.code}`
-    );
+    const logonResult = await socketLogon(session.apiKey, userId);
+    if (logonResult.code && logonResult.code !== 0) {
+      throw new Error(
+        `Binance logon error: ${logonResult.msg || logonResult.code}`
+      );
+    }
+    await socketUserStream(userId);
+    await SessionModel.findByIdAndUpdate(sessionId, { status: "active" });
+    console.log(`Session ${sessionId} started for user ${userId}`);
+    // Sucesso: status active
+    sendToUser(userId, { type: "session", status: "active", sessionId });
+  } catch (err) {
+    // Falha: status inactive
+    sendToUser(userId, { type: "session", status: "inactive", sessionId });
+    throw err;
   }
-  await socketUserStream(userId);
-  await SessionModel.findByIdAndUpdate(sessionId, { status: "active" });
-  console.log(`Session ${sessionId} started for user ${userId}`);
 }
 
 // Função para processar stopSession
 async function handleStopSession(sessionId: string, userId: string) {
-  // Encerra o socket se existir
-  const socket = getBinanceSocket(userId);
-  if (socket) {
-    socket.close();
+  try {
+    // Encerra o socket se existir
+    const socket = getBinanceSocket(userId);
+    if (socket) {
+      socket.close();
+    }
+    const session = await SessionModel.findOne({ _id: sessionId, userId });
+    if (!session) throw new Error("Session not found");
+    await SessionModel.findByIdAndUpdate(sessionId, {
+      status: "inactive",
+    });
+    console.log(`Session ${sessionId} stopped for user ${userId}`);
+    // Sucesso: status inactive
+    sendToUser(userId, { type: "session", status: "inactive", sessionId });
+  } catch (err) {
+    // Falha: status active
+    sendToUser(userId, { type: "session", status: "active", sessionId });
+    throw err;
   }
-  const session = await SessionModel.findOne({ _id: sessionId, userId });
-  if (!session) throw new Error("Session not found");
-  await SessionModel.findByIdAndUpdate(sessionId, {
-    status: "inactive",
-  });
-  console.log(`Session ${sessionId} stopped for user ${userId}`);
 }
 
 // Rate limit: 5 mensagens por segundo

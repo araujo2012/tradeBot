@@ -2,6 +2,8 @@ import app from "./app";
 import { connectToDatabase } from "./app/lib/database";
 import { connectToRabbitMQ } from "./app/lib/rabbit";
 import { startSocketConsumer } from "./app/socket/socket.consumer";
+import { createServer } from "http";
+import { initializeWebSocketServer } from "./websocket";
 
 const PORT = process.env.PORT || 3001;
 
@@ -11,7 +13,10 @@ const PORT = process.env.PORT || 3001;
     await connectToDatabase();
     startSocketConsumer();
 
-    app.listen(PORT, () => {
+    const server = createServer(app);
+    initializeWebSocketServer(server);
+
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
   } catch (err) {
