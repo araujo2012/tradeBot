@@ -4,6 +4,7 @@ import { connectToRabbitMQ } from "./app/lib/rabbit";
 import { startSocketConsumer } from "./app/socket/socket.consumer";
 import { createServer } from "http";
 import { initializeWebSocketServer } from "./websocket";
+import { bootstrap } from "./app/lib/bootstrap";
 
 const PORT = process.env.PORT || 3001;
 
@@ -12,6 +13,11 @@ const PORT = process.env.PORT || 3001;
     await connectToRabbitMQ();
     await connectToDatabase();
     startSocketConsumer();
+
+    // Executa o bootstrap, mas não bloqueia o start do servidor
+    bootstrap().catch((err) => {
+      console.error("[BOOTSTRAP] Falha ao inicializar sessões ativas:", err);
+    });
 
     const server = createServer(app);
     initializeWebSocketServer(server);
