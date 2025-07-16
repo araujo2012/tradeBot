@@ -5,7 +5,7 @@ export interface BotDocument extends Document {
   sessionId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   symbol: "BTCBRL" | "ETHBRL" | "USDTBRL" | "BNBBRL" | "SOLBRL" | "XRPBRL";
-  status: "active" | "inactive" | "archive";
+  status: "active" | "inactive" | "archive" | "pending" | "error";
   buySpeed: number;
   sellSpeed: number;
   buyProtection: number;
@@ -31,7 +31,7 @@ const botSchema = new Schema<BotDocument>(
     },
     status: {
       type: String,
-      enum: ["active", "inactive", "archive"],
+      enum: ["active", "inactive", "archive", "pending", "error"],
       default: "inactive",
     },
     buyProtection: {

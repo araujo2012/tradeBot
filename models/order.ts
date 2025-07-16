@@ -3,7 +3,8 @@ import { Schema, model } from "mongoose";
 const orderSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    botId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    botId: { type: Schema.Types.ObjectId, ref: "Bot", required: true },
+    sessionId: { type: Schema.Types.ObjectId, ref: "Session", required: true },
     symbol: { type: String, required: true },
     price: { type: Number },
     quantity: { type: Number },

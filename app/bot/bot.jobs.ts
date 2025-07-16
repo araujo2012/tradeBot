@@ -1,7 +1,12 @@
-// Função que será executada a cada minuto enquanto o bot estiver ativo
-export function runBotJob(botId: string) {
-  // Coloque aqui a lógica que deve rodar a cada minuto
-  console.log(`Job do bot ${botId} executado em`, new Date().toISOString());
+import { BotModel } from "../../models/bot";
+import { redis } from "../lib/redis";
+
+// Função que será executada a cada minuto para cada bot ativo
+export async function runBotJob(botId: string) {
+  const bot = await BotModel.findById(botId);
+  if (bot && bot.status === "active") {
+    console.log(`Job do bot ${botId} executado em`, new Date().toISOString());
+  }
 }
 
 // Gerenciador de intervalos por bot
