@@ -1,23 +1,7 @@
+import { BotType } from "app/bot/bot.type";
 import mongoose, { Document, Schema } from "mongoose";
 
-export interface BotDocument extends Document {
-  name: string;
-  sessionId: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;
-  symbol: "BTCBRL" | "ETHBRL" | "USDTBRL" | "BNBBRL" | "SOLBRL" | "XRPBRL";
-  status: "active" | "inactive" | "archive" | "pending" | "error";
-  buySpeed: number;
-  sellSpeed: number;
-  buyProtection: number;
-  sellProtection: number;
-  period: number;
-  width: number;
-  limit: number;
-  brl: number;
-  crypto: number;
-  cryptoTarget: number;
-  profit: number;
-}
+export interface BotDocument extends BotType {}
 
 const botSchema = new Schema<BotDocument>(
   {

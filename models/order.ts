@@ -1,3 +1,4 @@
+import { directionList, intervalList } from "../app/order/order.constants";
 import { Schema, model } from "mongoose";
 
 const orderSchema = new Schema(
@@ -10,17 +11,18 @@ const orderSchema = new Schema(
     quantity: { type: Number },
     type: {
       type: String,
-      enum: ["in", "out"],
+      enum: ["entry", "normal"],
       required: true,
+      default: "normal",
     },
     interval: {
       type: String,
-      enum: ["1m", "5m", "15m", "1h", "4h", "1d"],
+      enum: intervalList,
       required: true,
     },
     direction: {
       type: String,
-      enum: ["buy", "sell"],
+      enum: directionList,
       required: true,
     },
     binanceId: { type: String, required: true },

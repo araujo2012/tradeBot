@@ -1,5 +1,5 @@
 export interface LimitResult {
-  success: boolean;
+  success?: boolean;
   upperLimit?: number;
   lowerLimit?: number;
   message?: string;

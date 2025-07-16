@@ -10,9 +10,7 @@ import { KlinesResponse } from "./binance.interface";
 export async function getKlines(
   symbol: string,
   interval: string,
-  limit: number,
-  apiKey: string,
-  apiSecret: string
+  limit: number
 ): Promise<KlinesResponse> {
   if (!VALID_INTERVALS.includes(interval)) {
     return {

@@ -1,11 +1,12 @@
 import { BotModel } from "../../models/bot";
-import { redis } from "../lib/redis";
+import { setEntryOrders } from "../order/order.service";
 
 // Função que será executada a cada minuto para cada bot ativo
 export async function runBotJob(botId: string) {
   const bot = await BotModel.findById(botId);
   if (bot && bot.status === "active") {
     console.log(`Job do bot ${botId} executado em`, new Date().toISOString());
+    setEntryOrders(bot);
   }
 }
 

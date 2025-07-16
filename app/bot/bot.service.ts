@@ -54,7 +54,7 @@ export class BotService {
       sentMessages.push(message);
     }
     startBotJob(botId);
-    bot.status = "pending";
+    bot.status = activeOrders?.length > 0 ? "pending" : "active";
     await bot.save();
     return bot;
   }
