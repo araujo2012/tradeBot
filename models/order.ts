@@ -27,6 +27,12 @@ const orderSchema = new Schema(
     },
     binanceId: { type: String, required: true },
     executed: { type: Boolean },
+    status: {
+      type: String,
+      enum: ["active", "executed", "closed"],
+      required: true,
+      default: "closed",
+    },
   },
   { timestamps: true }
 );

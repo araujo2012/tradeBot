@@ -2,7 +2,7 @@ import axios from "axios";
 import crypto from "crypto";
 import { readFileSync } from "fs";
 import path from "path";
-import { getBinanceSocket } from "./socket.main";
+import { getBinanceSocket, initializeBinanceSocket } from "./socket.main";
 import { SessionModel } from "../../models/session";
 import { redis } from "../lib/redis";
 
@@ -43,6 +43,76 @@ async function getOrSetOffset(): Promise<number> {
   return offset;
 }
 
+// Realiza o place order via WebSocket
+export async function socketOrderPlace({
+  order,
+  session,
+  bot,
+}: {
+  order: any;
+  session: any;
+  bot: any;
+}): Promise<any> {
+  // Obter ou inicializar o socket da Binance
+  let socket = getBinanceSocket(bot.userId.toString());
+  if (!socket) {
+    await initializeBinanceSocket(bot.userId.toString());
+    socket = getBinanceSocket(bot.userId.toString());
+  }
+
+  if (!socket) {
+    throw new Error("Failed to initialize Binance socket");
+  }
+
+  // Obter offset do timestamp
+  const offset = await getOrSetOffset();
+  const timestamp = Date.now() - offset;
+
+  // Preparar os parâmetros da ordem
+  const params: any = {
+    apiKey: session.apiKey,
+    price: order.price.toString(),
+    quantity: order.quantity.toString(),
+    side: order.direction === "buy" ? "BUY" : "SELL",
+    symbol: order.symbol,
+    timeInForce: "GTC",
+    timestamp: timestamp,
+    type: "LIMIT",
+  };
+
+  // Criar a mensagem para o socket
+  const message = {
+    id: crypto.randomUUID(),
+    method: "order.place",
+    params: params,
+  };
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(
+        new Error("Timeout waiting for response from Binance (place order)")
+      );
+    }, 10000);
+
+    const handleMessage = (data: Buffer) => {
+      try {
+        const parsed = JSON.parse(data.toString());
+        if (parsed.id !== message.id) return;
+
+        clearTimeout(timeout);
+        socket.off("message", handleMessage);
+
+        resolve(parsed);
+      } catch {
+        // ignorar mensagens inválidas
+      }
+    };
+
+    socket.on("message", handleMessage);
+    //socket.send(JSON.stringify(message));
+  });
+}
+
 export async function socketUserStream(userId: string): Promise<any> {
   const socket = getBinanceSocket(userId);
 
@@ -60,7 +130,7 @@ export async function socketUserStream(userId: string): Promise<any> {
       reject(
         new Error("Timeout waiting for response from Binance (user stream)")
       );
-    }, 5000);
+    }, 10000);
 
     const handleMessage = (data: Buffer) => {
       try {
@@ -105,7 +175,7 @@ export async function socketLogon(
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(new Error("Timeout waiting for response from Binance"));
-    }, 5000);
+    }, 10000);
 
     const handleMessage = async (data: Buffer) => {
       try {
@@ -121,6 +191,72 @@ export async function socketLogon(
             await redis.del("binance:offset");
           }
         }
+
+        resolve(parsed);
+      } catch {
+        // ignorar mensagens inválidas
+      }
+    };
+
+    socket.on("message", handleMessage);
+    socket.send(JSON.stringify(message));
+  });
+}
+
+export async function socketOrderCancel({
+  apiKey,
+  symbol,
+  origClientOrderId,
+  userId,
+}: {
+  apiKey: string;
+  symbol: string;
+  origClientOrderId: string;
+  userId: string;
+}): Promise<any> {
+  // Obter ou inicializar o socket da Binance
+  let socket = getBinanceSocket(userId);
+  if (!socket) {
+    await initializeBinanceSocket(userId);
+    socket = getBinanceSocket(userId);
+  }
+
+  if (!socket) {
+    throw new Error("Failed to initialize Binance socket");
+  }
+
+  // Obter offset do timestamp
+  const offset = await getOrSetOffset();
+  const timestamp = Date.now() - offset;
+
+  // Preparar os parâmetros do cancelamento
+  const params: any = {
+    apiKey,
+    origClientOrderId,
+    symbol,
+    timestamp,
+  };
+
+  const message = {
+    id: crypto.randomUUID(),
+    method: "order.cancel",
+    params: params,
+  };
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(
+        new Error("Timeout waiting for response from Binance (cancel order)")
+      );
+    }, 10000);
+
+    const handleMessage = (data: Buffer) => {
+      try {
+        const parsed = JSON.parse(data.toString());
+        if (parsed.id !== message.id) return;
+
+        clearTimeout(timeout);
+        socket.off("message", handleMessage);
 
         resolve(parsed);
       } catch {

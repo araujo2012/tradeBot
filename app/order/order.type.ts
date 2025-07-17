@@ -1,4 +1,5 @@
 import type { BotType } from "../bot/bot.type";
+import type { Document } from "mongoose";
 
 export interface OrderEntry {
   botId: string;
@@ -7,6 +8,7 @@ export interface OrderEntry {
   type: "entry";
   price: number;
   quantity: number;
+  symbol: string;
 }
 
 export interface CalculateEntryOrderParams {
@@ -15,3 +17,20 @@ export interface CalculateEntryOrderParams {
 }
 
 export type IntervalType = "1m" | "5m" | "15m" | "1h" | "4h" | "1d";
+
+export type OrderDoc = Document & {
+  userId: string;
+  botId: string;
+  sessionId: string;
+  symbol: string;
+  price: number;
+  quantity: number;
+  type: "entry" | "normal";
+  interval: string;
+  direction: "buy" | "sell";
+  binanceId: string;
+  executed?: boolean;
+  status: "active" | "executed" | "closed";
+  createdAt?: Date;
+  updatedAt?: Date;
+};

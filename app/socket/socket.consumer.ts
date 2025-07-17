@@ -1,9 +1,22 @@
 import { connectToRabbitMQ } from "../lib/rabbit";
 import { SessionModel } from "../../models/session";
+import { BotModel } from "../../models/bot";
+import { OrderModel } from "../../models/order";
 import { initializeBinanceSocket } from "./socket.main";
-import { socketLogon, socketUserStream } from "./socket.requests";
+import {
+  socketLogon,
+  socketUserStream,
+  socketOrderPlace,
+  socketOrderCancel,
+} from "./socket.requests";
 import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
+
+// Rate limit: 5 mensagens por segundo
+const RATE_LIMIT = 5;
+const INTERVAL_MS = 1000 / RATE_LIMIT;
+let processing = false;
+const queue: any[] = [];
 
 // Função para processar startSession
 async function handleStartSession(sessionId: string, userId: string) {
@@ -58,11 +71,73 @@ async function handleStopSession(sessionId: string, userId: string) {
   }
 }
 
-// Rate limit: 5 mensagens por segundo
-const RATE_LIMIT = 5;
-const INTERVAL_MS = 1000 / RATE_LIMIT;
-let processing = false;
-const queue: any[] = [];
+async function handleCreateOrder(order: any) {
+  try {
+    const { botId } = order;
+    const bot = await BotModel.findById(botId);
+    if (!bot) throw new Error("Bot not found");
+
+    const session = await SessionModel.findById(bot.sessionId);
+    if (!session) throw new Error("Session not found");
+
+    const orderData = {
+      userId: bot.userId,
+      botId: bot._id,
+      sessionId: bot.sessionId,
+      symbol: order.symbol || bot.symbol,
+      price: order.price,
+      quantity: order.quantity,
+      type: order.type || "entry",
+      interval: order.interval,
+      direction: order.direction,
+      binanceId: "",
+      status: "pending",
+    };
+
+    const savedOrder = await OrderModel.findOneAndUpdate(
+      {
+        botId: bot._id,
+        type: order.type || "entry",
+        interval: order.interval,
+        direction: order.direction,
+      },
+      orderData,
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    console.log(
+      `Order ${savedOrder ? "updated" : "created"}: ${savedOrder?._id}`
+    );
+
+    const result = await socketOrderPlace({ order, session, bot });
+  } catch (err) {
+    console.error("Error creating order:", err);
+    throw err;
+  }
+}
+
+async function handleCancelOrder({
+  apiKey,
+  origClientOrderId,
+  symbol,
+  userId,
+}: {
+  apiKey: string;
+  origClientOrderId: string;
+  symbol: string;
+  userId: string;
+}) {
+  try {
+    await socketOrderCancel({ apiKey, origClientOrderId, symbol, userId });
+  } catch (err) {
+    console.error("Error creating order:", err);
+    throw err;
+  }
+}
 
 async function processQueue() {
   if (processing || queue.length === 0) return;
@@ -77,8 +152,14 @@ async function processQueue() {
       case "stopSession":
         await handleStopSession(content.sessionId, content.userId);
         break;
+      case "createOrder":
+        await handleCreateOrder(content.payload);
+        break;
+      case "cancelOrder":
+        await handleCancelOrder(content.payload);
+        break;
       default:
-        console.warn("Unknown action:", content.action);
+        console.warn("Unknown status:", content.status);
     }
     channel.ack(msg);
   } catch (err) {
@@ -92,6 +173,7 @@ async function processQueue() {
 export async function startSocketConsumer() {
   const channel = await connectToRabbitMQ();
   await channel.assertQueue("socket", { durable: true });
+  channel.prefetch(50);
   console.log("[SOCKET CONSUMER] Waiting for messages in 'socket' queue...");
 
   channel.consume(

@@ -47,6 +47,7 @@ export class BotService {
             apiKey: session.apiKey,
             origClientOrderId: order.binanceId,
             symbol: order.symbol,
+            userId: session.userId,
           },
         };
         channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
