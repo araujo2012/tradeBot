@@ -31,30 +31,32 @@ export class BotService {
     });
     if (!session) throw new Error("Session for this bot is not active");
 
-    // 1. Buscar todas as ordens ativas (executed: false ou undefined) com o botId
     const activeOrders = await OrderModel.find({
       botId: botId,
-      $or: [{ executed: false }, { executed: { $exists: false } }],
+      status: "active",
     });
 
     // 2. Para cada ordem encontrada, enviar mensagem para a fila do socket do RabbitMQ
     const channel = getRabbitChannel();
-    const sentMessages = [];
+    let cancelSended = 0;
     for (const order of activeOrders) {
-      const message = {
-        action: "cancelOrder",
-        orderId: order._id,
-        botId: botId,
-        userId: userId,
-        status: "cancelOrder",
-      };
-      channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
-        persistent: true,
-      });
-      sentMessages.push(message);
+      if (order.binanceId !== "") {
+        const message = {
+          action: "cancelOrder",
+          payload: {
+            apiKey: session.apiKey,
+            origClientOrderId: order.binanceId,
+            symbol: order.symbol,
+          },
+        };
+        channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
+          persistent: true,
+        });
+        cancelSended += 1;
+      }
     }
     startBotJob(botId);
-    bot.status = activeOrders?.length > 0 ? "pending" : "active";
+    bot.status = cancelSended > 0 ? "pending" : "active";
     await bot.save();
     return bot;
   }
