@@ -5,6 +5,7 @@ import path from "path";
 import { getBinanceSocket, initializeBinanceSocket } from "./socket.main";
 import { SessionModel } from "../../models/session";
 import { redis } from "../lib/redis";
+import { OrderEntry } from "app/order/order.type";
 
 // Lê e prepara a chave privada Ed25519
 const PRIVATE_KEY_PATH = path.resolve(
@@ -46,18 +47,16 @@ async function getOrSetOffset(): Promise<number> {
 // Realiza o place order via WebSocket
 export async function socketOrderPlace({
   order,
-  session,
-  bot,
+  clientId,
 }: {
-  order: any;
-  session: any;
-  bot: any;
+  order: OrderEntry;
+  clientId: string;
 }): Promise<any> {
-  // Obter ou inicializar o socket da Binance
-  let socket = getBinanceSocket(bot.userId.toString());
+  const { userId, apiKey } = order;
+  let socket = getBinanceSocket(userId);
   if (!socket) {
-    await initializeBinanceSocket(bot.userId.toString());
-    socket = getBinanceSocket(bot.userId.toString());
+    await initializeBinanceSocket(userId);
+    socket = getBinanceSocket(userId);
   }
 
   if (!socket) {
@@ -70,7 +69,7 @@ export async function socketOrderPlace({
 
   // Preparar os parâmetros da ordem
   const params: any = {
-    apiKey: session.apiKey,
+    apiKey,
     price: order.price.toString(),
     quantity: order.quantity.toString(),
     side: order.direction === "buy" ? "BUY" : "SELL",
@@ -80,12 +79,17 @@ export async function socketOrderPlace({
     type: "LIMIT",
   };
 
+  // Assinar os parâmetros
+  params.signature = signPayload(params);
+
   // Criar a mensagem para o socket
   const message = {
-    id: crypto.randomUUID(),
+    id: clientId,
     method: "order.place",
     params: params,
   };
+
+  console.log(message);
 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -109,7 +113,7 @@ export async function socketOrderPlace({
     };
 
     socket.on("message", handleMessage);
-    //socket.send(JSON.stringify(message));
+    socket.send(JSON.stringify(message));
   });
 }
 
@@ -236,6 +240,8 @@ export async function socketOrderCancel({
     symbol,
     timestamp,
   };
+
+  params.signature = signPayload(params);
 
   const message = {
     id: crypto.randomUUID(),

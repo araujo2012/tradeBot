@@ -15,22 +15,24 @@ export async function calculateBollLimits({
   period: number;
   width: number;
 }): Promise<LimitResult> {
-  const klinesResult = await getKlines(symbol, interval, period + 20);
+  const klinesResult = await getKlines(symbol, interval, period);
   if (klinesResult.erro || !klinesResult.data) {
     return {
       success: false,
       message: klinesResult.message || "Failed to fetch klines",
+      upperLimit: Infinity,
+      lowerLimit: 0,
     };
   }
-  const range = 2.1 + (width - 5) / 50;
   const stats = new BinanceStats();
   const klineValues = stats.calculateKlineValue(klinesResult.data);
   const mean = stats.calculateAverage(klineValues);
   const standardDeviation = stats.calculateStandardDeviation(klineValues);
-  const upperLimit = mean + range * standardDeviation;
-  const lowerLimit = mean - range * standardDeviation;
+  const upperLimit = mean + width * standardDeviation;
+  const lowerLimit = mean - width * standardDeviation;
 
   return {
+    success: true,
     upperLimit,
     lowerLimit,
   };

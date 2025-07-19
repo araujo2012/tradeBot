@@ -42,8 +42,7 @@ export async function getCurrentPrice(symbol: string): Promise<PriceResponse> {
     const price = parseFloat(response.data.price);
 
     // Salvar o preço no Redis por 1 minuto
-    await redis.set(redisKey, price.toString(), "EX", 60);
-    console.log(`Current price for ${symbol}: ${price} saved to Redis`);
+    await redis.set(redisKey, price.toString(), "EX", 10);
 
     return {
       erro: false,

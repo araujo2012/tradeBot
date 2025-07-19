@@ -9,6 +9,7 @@ const orderSchema = new Schema(
     symbol: { type: String, required: true },
     price: { type: Number },
     quantity: { type: Number },
+    value: { type: Number },
     type: {
       type: String,
       enum: ["entry", "normal"],
@@ -26,13 +27,15 @@ const orderSchema = new Schema(
       required: true,
     },
     binanceId: { type: String, required: true },
-    executed: { type: Boolean },
+    clientId: { type: String, required: true },
+    executedQtd: { type: Number, default: 0 },
     status: {
       type: String,
-      enum: ["active", "executed", "closed"],
+      enum: ["active", "executed", "closed", "pending"],
       required: true,
       default: "closed",
     },
+    lastExecutedTime: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

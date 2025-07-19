@@ -11,6 +11,7 @@ import {
 } from "./socket.requests";
 import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
+import { OrderDoc, OrderEntry } from "app/order/order.type";
 
 // Rate limit: 5 mensagens por segundo
 const RATE_LIMIT = 5;
@@ -71,35 +72,23 @@ async function handleStopSession(sessionId: string, userId: string) {
   }
 }
 
-async function handleCreateOrder(order: any) {
+async function handleCreateOrder(order: OrderEntry) {
   try {
-    const { botId } = order;
-    const bot = await BotModel.findById(botId);
-    if (!bot) throw new Error("Bot not found");
-
-    const session = await SessionModel.findById(bot.sessionId);
-    if (!session) throw new Error("Session not found");
-
+    const clientId = crypto.randomUUID();
+    const { botId, type, interval, direction } = order;
     const orderData = {
-      userId: bot.userId,
-      botId: bot._id,
-      sessionId: bot.sessionId,
-      symbol: order.symbol || bot.symbol,
-      price: order.price,
-      quantity: order.quantity,
-      type: order.type || "entry",
-      interval: order.interval,
-      direction: order.direction,
+      ...order,
       binanceId: "",
       status: "pending",
+      clientId: clientId,
     };
 
     const savedOrder = await OrderModel.findOneAndUpdate(
       {
-        botId: bot._id,
-        type: order.type || "entry",
-        interval: order.interval,
-        direction: order.direction,
+        botId,
+        type,
+        interval,
+        direction,
       },
       orderData,
       {
@@ -113,7 +102,7 @@ async function handleCreateOrder(order: any) {
       `Order ${savedOrder ? "updated" : "created"}: ${savedOrder?._id}`
     );
 
-    const result = await socketOrderPlace({ order, session, bot });
+    const result = await socketOrderPlace({ order, clientId });
   } catch (err) {
     console.error("Error creating order:", err);
     throw err;

@@ -56,7 +56,7 @@ export class BotService {
         cancelSended += 1;
       }
     }
-    startBotJob(botId);
+    startBotJob(botId, session.apiKey);
     bot.status = cancelSended > 0 ? "pending" : "active";
     await bot.save();
     return bot;

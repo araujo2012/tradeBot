@@ -3,12 +3,17 @@ import type { Document } from "mongoose";
 
 export interface OrderEntry {
   botId: string;
+  sessionId: string;
+  userId: string;
   direction: "buy" | "sell";
-  interval: string;
+  interval: IntervalType;
   type: "entry";
   price: number;
   quantity: number;
   symbol: string;
+  value: number;
+  period: number;
+  apiKey: string;
 }
 
 export interface CalculateEntryOrderParams {
@@ -25,6 +30,7 @@ export type OrderDoc = Document & {
   symbol: string;
   price: number;
   quantity: number;
+  value: number;
   type: "entry" | "normal";
   interval: string;
   direction: "buy" | "sell";
@@ -33,4 +39,5 @@ export type OrderDoc = Document & {
   status: "active" | "executed" | "closed";
   createdAt?: Date;
   updatedAt?: Date;
+  lastExecutedTime?: Date;
 };

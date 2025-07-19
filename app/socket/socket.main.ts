@@ -1,4 +1,9 @@
 import WebSocket from "ws";
+import {
+  handleCancelOrderResponse,
+  handleErrors,
+  handlePlaceOrderResponse,
+} from "./socket.responses";
 
 const socketMap = new Map<string, WebSocket>();
 
@@ -28,7 +33,25 @@ export function initializeBinanceSocket(userId: string): Promise<void> {
     });
 
     ws.on("message", (data) => {
-      console.log(`📩 (${userId})`, data.toString());
+      try {
+        const msg = JSON.parse(data.toString());
+        console.log(msg);
+        if (msg.error) {
+          handleErrors(msg);
+        } else if (msg.id) {
+          handlePlaceOrderResponse(msg);
+        } else if (
+          msg?.event?.e === "executionReport" &&
+          msg?.event?.X === "CANCELED"
+        ) {
+          handleCancelOrderResponse(msg.event);
+        } else {
+          // Outras respostas podem ser tratadas aqui
+          console.log(`📩 (${userId}) [OUTRO EVENTO]`, msg);
+        }
+      } catch (err) {
+        console.log(`📩 (${userId}) [ERRO PARSE]`, data.toString());
+      }
     });
   });
 }

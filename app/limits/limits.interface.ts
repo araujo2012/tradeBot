@@ -1,6 +1,6 @@
 export interface LimitResult {
   success?: boolean;
-  upperLimit?: number;
-  lowerLimit?: number;
+  upperLimit: number;
+  lowerLimit: number;
   message?: string;
 }
