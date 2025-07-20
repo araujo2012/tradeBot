@@ -2,7 +2,7 @@ import { TransactionModel } from "../../models/transaction";
 import { BotModel } from "../../models/bot";
 import { intervalList } from "../order/order.constants";
 import { OrderDoc } from "../order/order.type";
-import { getSpeed } from "app/order/order.utils";
+import { getSpeed } from "../order/order.utils";
 import type { Document, Types } from "mongoose";
 
 export interface TransactionDoc extends Document {
