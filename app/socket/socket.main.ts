@@ -21,6 +21,11 @@ export function initializeBinanceSocket(userId: string): Promise<void> {
       resolve();
     });
 
+    ws.on("ping", (data) => {
+      console.log(`📡 PING recebido para usuário ${userId}, respondendo PONG`);
+      ws.pong(data); // responde com o mesmo payload
+    });
+
     ws.on("close", () => {
       console.warn(`⚠️ WebSocket fechado para usuário ${userId}`);
       socketMap.delete(userId);
