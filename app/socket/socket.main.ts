@@ -40,11 +40,10 @@ export function initializeBinanceSocket(userId: string): Promise<void> {
           handleErrors(msg);
         } else if (msg.id) {
           handlePlaceOrderResponse(msg);
-        } else if (
-          msg?.event?.e === "executionReport" &&
-          msg?.event?.X === "CANCELED"
-        ) {
-          handleCancelOrderResponse(msg.event);
+        } else if (msg?.event?.e === "executionReport") {
+          if (msg?.event?.X === "CANCELED") {
+            handleCancelOrderResponse(msg.event);
+          }
         } else {
           // Outras respostas podem ser tratadas aqui
           console.log(`📩 (${userId}) [OUTRO EVENTO]`, msg);

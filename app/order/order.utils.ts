@@ -4,15 +4,33 @@ import { IntervalType } from "./order.type";
 import { SymbolConfigModel } from "../../models/symbolConfig";
 
 export const getSpeed = ({
+  isExecuted,
+  isEntry,
   speed,
   interval,
 }: {
+  isExecuted: boolean;
+  isEntry: boolean;
   speed: number;
-  interval: IntervalType;
+  interval: IntervalType | undefined;
 }) => {
+  const intervalValue = interval
+    ? intervalData[interval].entry
+    : isEntry
+    ? 6
+    : -1;
+  if (!isExecuted) {
+    const total =
+      1 + speed * (1 + speed * (1 + speed * (1 + speed * (1 + speed))));
+    return Math.pow(speed, intervalValue) / total;
+  }
   const total =
-    1 + speed * (1 + speed * (1 + speed * (1 + speed * (1 + speed))));
-  return Math.pow(speed, intervalData[interval].entry) / total;
+    1 +
+    speed * (1 + speed * (1 + speed * (1 + speed * (1 + speed * (1 + speed)))));
+  if (isEntry) {
+    return Math.pow(speed, 6 - intervalValue) / total;
+  }
+  return Math.pow(speed, 5 - intervalValue) / total;
 };
 
 export const getSymbolConfig = async (symbol: string) => {

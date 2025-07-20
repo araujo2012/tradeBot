@@ -1,4 +1,6 @@
 import { OrderModel } from "../../models/order";
+import { handleExecutedOrder } from "../transaction/transaction.service";
+import { OrderDoc } from "../order/order.type";
 
 export async function handlePlaceOrderResponse(response: any) {
   const { id, result } = response;
@@ -31,27 +33,33 @@ export async function handlePlaceOrderResponse(response: any) {
 
 //adicionar logica de ordens executadas
 export async function handleCancelOrderResponse(response: any) {
-  const { C: binanceId, z } = response;
-  const executedQtd = Number(z);
-  const order = await OrderModel.findOne({ binanceId });
-  if (!order) {
-    console.log(`[Binance - cancelOrder] Ordem ${binanceId} nao encontrada.`);
-    return;
-  }
-  if (executedQtd > 0) {
-    order.executedQtd = executedQtd;
-    order.status = "executed";
-    if (executedQtd > 0) {
+  try {
+    const { C: binanceId, z } = response;
+    const executedQtd = Number(z);
+    const order: OrderDoc | null = await OrderModel.findOne({ binanceId });
+    if (!order) {
+      return;
+    }
+    if (order.executedQtd > 0) {
+      if (order.status !== "executed") {
+        order.status = "executed";
+        await order.save();
+      }
+      order.executedQtd = executedQtd;
       order.lastExecutedTime = new Date();
     }
+    order.status = "closed";
     await order.save();
-    console.log(
-      `[Binance] Ordem cancelada com executedQtd: ${executedQtd}, status: ${order.status}`
-    );
-    return;
+    if (executedQtd - order.executedQtd > 0) {
+      await handleExecutedOrder({
+        order,
+        executedQtd: executedQtd - order.executedQtd,
+      });
+    }
+    return response;
+  } catch (error) {
+    console.log("handleCancelOrderResponse - ", error);
   }
-
-  return response;
 }
 
 export async function handleErrors(response: any) {

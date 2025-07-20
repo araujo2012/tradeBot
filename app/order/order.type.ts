@@ -36,6 +36,7 @@ export type OrderDoc = Document & {
   direction: "buy" | "sell";
   binanceId: string;
   executed?: boolean;
+  executedQtd: number;
   status: "active" | "executed" | "closed";
   createdAt?: Date;
   updatedAt?: Date;

@@ -27,11 +27,21 @@ export async function calculateEntryOrder({
   const quantity =
     bot.crypto *
     (1 - bot.sellProtection / 100) *
-    getSpeed({ speed: bot.sellSpeed + 1, interval });
+    getSpeed({
+      speed: bot.sellSpeed + 1,
+      interval,
+      isExecuted: false,
+      isEntry: true,
+    });
   const value =
     bot.brl *
     (1 - bot.buyProtection / 100) *
-    getSpeed({ speed: bot.buySpeed + 1, interval });
+    getSpeed({
+      speed: bot.buySpeed + 1,
+      interval,
+      isExecuted: false,
+      isEntry: true,
+    });
 
   const sellOrder: OrderEntry = {
     botId: String(bot._id),
