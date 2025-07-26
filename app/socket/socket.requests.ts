@@ -3,7 +3,6 @@ import crypto from "crypto";
 import { readFileSync } from "fs";
 import path from "path";
 import { getBinanceSocket, initializeBinanceSocket } from "./socket.main";
-import { SessionModel } from "../../models/session";
 import { redis } from "../lib/redis";
 import { OrderEntry } from "app/order/order.type";
 

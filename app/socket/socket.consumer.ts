@@ -1,6 +1,5 @@
 import { connectToRabbitMQ } from "../lib/rabbit";
 import { SessionModel } from "../../models/session";
-import { BotModel } from "../../models/bot";
 import { OrderModel } from "../../models/order";
 import { initializeBinanceSocket } from "./socket.main";
 import {
@@ -11,7 +10,7 @@ import {
 } from "./socket.requests";
 import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
-import { OrderDoc, OrderEntry } from "app/order/order.type";
+import { OrderEntry } from "app/order/order.type";
 
 // Rate limit: 5 mensagens por segundo
 const RATE_LIMIT = 5;
