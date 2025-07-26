@@ -5,6 +5,7 @@ import path from "path";
 import { getBinanceSocket, initializeBinanceSocket } from "./socket.main";
 import { redis } from "../lib/redis";
 import { OrderEntry } from "app/order/order.type";
+import { WebSocket } from "ws";
 
 // Lê e prepara a chave privada Ed25519
 const PRIVATE_KEY_PATH = path.resolve(
@@ -116,8 +117,8 @@ export async function socketOrderPlace({
   });
 }
 
-export async function socketUserStream(userId: string): Promise<any> {
-  const socket = getBinanceSocket(userId);
+export async function socketUserStream(sessionId: string): Promise<any> {
+  const socket = getBinanceSocket(sessionId);
 
   if (!socket || socket.readyState !== socket.OPEN) {
     throw new Error("WebSocket is not connected");
@@ -154,15 +155,17 @@ export async function socketUserStream(userId: string): Promise<any> {
   });
 }
 
-// Realiza o session.logon via WebSocket
-export async function socketLogon(
-  apiKey: string,
-  userId: string
-): Promise<any> {
-  const socket = getBinanceSocket(userId);
-
-  if (!socket || socket.readyState !== socket.OPEN) {
-    throw new Error("WebSocket is not connected");
+export async function socketLogon({
+  apiKey,
+  sessionId,
+}: {
+  apiKey: string;
+  sessionId: string;
+}): Promise<any> {
+  let socket = getBinanceSocket(sessionId);
+  if (!socket) {
+    await initializeBinanceSocket(sessionId);
+    socket = getBinanceSocket(sessionId) as WebSocket;
   }
 
   const offset = await getOrSetOffset();

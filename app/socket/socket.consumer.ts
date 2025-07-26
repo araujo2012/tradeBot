@@ -1,7 +1,8 @@
 import { connectToRabbitMQ } from "../lib/rabbit";
 import { SessionModel } from "../../models/session";
 import { OrderModel } from "../../models/order";
-import { initializeBinanceSocket } from "./socket.main";
+import { BotModel } from "../../models/bot";
+import { botService } from "../bot/bot.service";
 import {
   socketLogon,
   socketUserStream,
@@ -19,31 +20,33 @@ let processing = false;
 const queue: any[] = [];
 
 // Função para processar startSession
-async function handleStartSession(sessionId: string, userId: string) {
+async function handleStartSession(sessionId: string) {
+  const session = await SessionModel.findById(sessionId);
+  if (!session) throw new Error(`Session not found: ${sessionId}`);
+  const { apiKey, userId } = session;
   try {
-    const session = await SessionModel.findOne({ _id: sessionId, userId });
-    if (!session) throw new Error("Session not found");
-
-    let socket = getBinanceSocket(userId);
-    if (!socket) {
-      await initializeBinanceSocket(userId);
-      socket = getBinanceSocket(userId);
-    }
-
-    const logonResult = await socketLogon(session.apiKey, userId);
+    if (!apiKey) throw new Error(`ApiKey not found: ${sessionId}`);
+    const logonResult = await socketLogon({ apiKey, sessionId });
     if (logonResult.code && logonResult.code !== 0) {
       throw new Error(
         `Binance logon error: ${logonResult.msg || logonResult.code}`
       );
     }
-    await socketUserStream(userId);
-    await SessionModel.findByIdAndUpdate(sessionId, { status: "active" });
-    console.log(`Session ${sessionId} started for user ${userId}`);
-    // Sucesso: status active
-    sendToUser(userId, { type: "session", status: "active", sessionId });
+    await socketUserStream(sessionId);
+    session.status = "active";
+    await session.save();
+    console.log(`Session ${sessionId} started for user ${sessionId}`);
+    sendToUser(userId.toString(), {
+      type: "session",
+      status: "active",
+      sessionId,
+    });
   } catch (err) {
-    // Falha: status inactive
-    sendToUser(userId, { type: "session", status: "inactive", sessionId });
+    sendToUser(userId.toString(), {
+      type: "session",
+      status: "inactive",
+      sessionId,
+    });
     throw err;
   }
 }
@@ -127,6 +130,14 @@ async function handleCancelOrder({
   }
 }
 
+export async function handleRestartSession(sessionId: string): Promise<void> {
+  await handleStartSession(sessionId);
+  const bots = await BotModel.find({ sessionId, status: "active" });
+  for (const bot of bots) {
+    botService.startBot(bot._id.toString());
+  }
+}
+
 async function processQueue() {
   if (processing || queue.length === 0) return;
   processing = true;
@@ -135,7 +146,7 @@ async function processQueue() {
     const content = JSON.parse(msg.content.toString());
     switch (content.action) {
       case "startSession":
-        await handleStartSession(content.sessionId, content.userId);
+        await handleStartSession(content.sessionId);
         break;
       case "stopSession":
         await handleStopSession(content.sessionId, content.userId);
@@ -145,6 +156,9 @@ async function processQueue() {
         break;
       case "cancelOrder":
         await handleCancelOrder(content.payload);
+        break;
+      case "restartSession":
+        handleRestartSession(content.sessionId);
         break;
       default:
         console.warn("Unknown status:", content.status);
