@@ -1,10 +1,14 @@
+import { SessionModel } from "models/session";
 import { BotModel } from "../../models/bot";
 import { setEntryOrders } from "../order/order.service";
 
 // Função que será executada a cada minuto para cada bot ativo
 export async function runBotJob(botId: string, apiKey: string) {
   const bot = await BotModel.findById(botId);
-  if (bot && bot.status === "active") {
+  const session = await SessionModel.findById(bot?.sessionId);
+  const canBotRun =
+    bot && session && bot.status === "active" && session.status === "active";
+  if (canBotRun) {
     console.log(`Job do bot ${botId} executado em`, new Date().toISOString());
     setEntryOrders(bot, apiKey);
   }

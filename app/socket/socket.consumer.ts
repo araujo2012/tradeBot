@@ -12,7 +12,8 @@ import {
 } from "./socket.requests";
 import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
-import { OrderEntry } from "app/order/order.type";
+import { OrderDoc, OrderEntry } from "app/order/order.type";
+import { handleExecutedOrder } from "app/transaction/transaction.service";
 
 // Rate limit: 5 mensagens por segundo
 const RATE_LIMIT = 5;
@@ -151,26 +152,28 @@ async function handleSyncOrder(payload: {
   const { origClientOrderId } = payload;
   const response = await socketOrderStatus(payload);
   const orderData = response?.result;
-  const pendingOrder = await OrderModel.findOne({
-    binanceId: origClientOrderId,
-  });
-  if (!pendingOrder) {
-    throw new Error(`Invalid origClientOrderId: ${origClientOrderId}`);
-  }
   if (!orderData || !orderData.clientOrderId) {
+    const pendingOrder = await OrderModel.findOne({
+      binanceId: origClientOrderId,
+    });
+    if (!pendingOrder) {
+      throw new Error(`Invalid origClientOrderId: ${origClientOrderId}`);
+    }
     pendingOrder.status = "closed";
     pendingOrder.save();
     throw new Error("Invalid response from Binance (order.status)");
-    return;
   }
   const { clientOrderId, executedQty, updateTime } = orderData;
-  const order = await OrderModel.findOne({
-    binanceId: clientOrderId,
-  });
+  const order = (await OrderModel.findOne({
+    binanceId: { $in: [clientOrderId, origClientOrderId] },
+  })) as OrderDoc | null;
   if (!order) {
-    pendingOrder.status = "closed";
-    pendingOrder.save();
-    return;
+    throw new Error(`Could not find order: ${origClientOrderId}`);
+  }
+  if (clientOrderId !== origClientOrderId) {
+    throw new Error(
+      `Could not find order: ${origClientOrderId} ou ${clientOrderId}`
+    );
   }
   order.status = Number(executedQty) > 0 ? "executed" : "active";
   if (Number(executedQty) > 0) {
@@ -180,6 +183,17 @@ async function handleSyncOrder(payload: {
   }
   await order.save();
   if (order.executedQtd < Number(executedQty)) {
+    await handleExecutedOrder({
+      order,
+      executedQtd: Number(executedQty) - order.executedQtd,
+    });
+  }
+  const activeOrders = await OrderModel.find({
+    botId: order.botId,
+    status: "pending",
+  });
+  if (!activeOrders) {
+    BotModel.updateOne({ _id: "order.botId" }, { status: "active" });
   }
 }
 

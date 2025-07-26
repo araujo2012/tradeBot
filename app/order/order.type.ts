@@ -41,4 +41,5 @@ export type OrderDoc = Document & {
   createdAt?: Date;
   updatedAt?: Date;
   lastExecutedTime?: Date;
+  updateTime?: Date;
 };

@@ -32,26 +32,34 @@ async function startBot(botId: string) {
     status: { $in: ["active", "executed", "pending"] },
   });
   const channel = getRabbitChannel();
-  let cancelSended = 0;
-  for (const order of activeOrders) {
-    if (order.binanceId !== "") {
+  const syncOrders = activeOrders
+    .filter((order) => order.binanceId !== "")
+    .map(async (order) => {
+      order.status = "pending";
+      await order.save();
+
       const message = {
         action: "syncOrder",
         payload: {
           apiKey: session.apiKey,
           origClientOrderId: order.binanceId,
           symbol: order.symbol,
+          sessionId: session._id.toString(),
         },
       };
+
       channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
         persistent: true,
       });
-      cancelSended += 1;
-    }
-  }
-  startBotJob(botId, session.apiKey);
+
+      return 1;
+    });
+
+  const results = await Promise.all(syncOrders);
+  const cancelSended = results.reduce((acc, val) => acc + val, 0);
   bot.status = cancelSended > 0 ? "pending" : "active";
   await bot.save();
+  startBotJob(botId, session.apiKey);
   return bot;
 }
 
