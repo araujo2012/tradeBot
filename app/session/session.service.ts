@@ -57,12 +57,11 @@ async function deleteSession(sessionId: string, userId: string) {
 }
 
 // Iniciar uma sessão (via fila RabbitMQ)
-async function startSession(sessionId: string, userId: string) {
+async function startSession(sessionId: string) {
   const channel = getRabbitChannel();
   const message = {
     action: "startSession",
     sessionId,
-    userId,
   };
   channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
     persistent: true,

@@ -92,7 +92,7 @@ export async function startSession(req: Request, res: Response) {
       return res.status(401).json({ error: "User not authenticated" });
     }
     const sessionId = req.params.sessionId;
-    const result = await sessionService.startSession(sessionId, userId);
+    const result = await sessionService.startSession(sessionId);
     res.json(result);
   } catch (error) {
     console.error("Error starting session:", error);
