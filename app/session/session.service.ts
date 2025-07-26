@@ -87,28 +87,22 @@ async function stopSession(sessionId: string, userId: string) {
 }
 
 // Reestabelecer conexão WebSocket para um usuário (a lógica pode ser implementada depois)
-async function reconnectUserSocket(userId: string) {
-  const sessions = await SessionModel.find({ userId });
-  if (!sessions.length) {
-    console.warn(`⚠️ Nenhuma sessão encontrada para o usuário ${userId}`);
+async function reconnectUserSocket(sessionId: string) {
+  const session = await SessionModel.findById(sessionId);
+  if (!session) {
+    console.warn(`⚠️ Nenhuma sessão encontrada com o id: ${sessionId}`);
     return;
   }
-  const sessionIds = sessions.map((s) => s._id);
-  await SessionModel.updateMany(
-    { _id: { $in: sessionIds } },
-    { $set: { status: "reconnecting" } }
-  );
+  session.status = "reconnecting";
+  await session.save();
   const channel = getRabbitChannel();
-  for (const session of sessions) {
-    const message = {
-      action: "restartSession",
-      sessionId: session._id.toString(),
-      userId,
-    };
-    channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
-      persistent: true,
-    });
-  }
+  const message = {
+    action: "restartSession",
+    sessionId: sessionId,
+  };
+  channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
+    persistent: true,
+  });
 }
 
 export const sessionService = {

@@ -7,7 +7,7 @@ const sessionSchema = new Schema(
     apiKey: { type: String, required: true },
     status: {
       type: String,
-      enum: ["active", "inactive", "reconecting"],
+      enum: ["active", "inactive", "reconnecting"],
       default: "inactive",
     },
     name: { type: String },
