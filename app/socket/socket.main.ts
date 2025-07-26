@@ -9,37 +9,36 @@ const { reconnectUserSocket } = sessionService;
 const socketMap = new Map<string, WebSocket>();
 const lastPingMap = new Map<string, number>();
 
-export function getBinanceSocket(userId: string): WebSocket | null {
-  return socketMap.get(userId) || null;
+export function getBinanceSocket(sessionId: string): WebSocket | null {
+  return socketMap.get(sessionId) || null;
 }
 
-export function initializeBinanceSocket(userId: string): Promise<void> {
+export function initializeBinanceSocket(sessionId: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket("wss://ws-api.binance.com:443/ws-api/v3");
 
     ws.on("open", () => {
-      socketMap.set(userId, ws);
-      lastPingMap.set(userId, Date.now());
-      console.log(`✅ WebSocket conectado para usuário ${userId}`);
+      socketMap.set(sessionId, ws);
+      lastPingMap.set(sessionId, Date.now());
       resolve();
     });
 
     ws.on("ping", (data) => {
-      lastPingMap.set(userId, Date.now());
+      lastPingMap.set(sessionId, Date.now());
       ws.pong(data);
     });
 
     ws.on("close", () => {
-      console.warn(`⚠️ WebSocket fechado para usuário ${userId}`);
-      socketMap.delete(userId);
-      lastPingMap.delete(userId);
-      reconnectUserSocket(userId); // ✅ reconexão centralizada
+      console.warn(`⚠️ WebSocket fechado para sessão ${sessionId}`);
+      socketMap.delete(sessionId);
+      lastPingMap.delete(sessionId);
+      reconnectUserSocket(sessionId);
     });
 
     ws.on("error", (err) => {
-      console.error(`❌ Erro WebSocket para usuário ${userId}`, err);
-      socketMap.delete(userId);
-      lastPingMap.delete(userId);
+      console.error(`❌ Erro WebSocket para sessão ${sessionId}`, err);
+      socketMap.delete(sessionId);
+      lastPingMap.delete(sessionId);
       reject(err);
     });
 
@@ -56,10 +55,10 @@ export function initializeBinanceSocket(userId: string): Promise<void> {
             handleCancelOrderResponse(msg.event);
           }
         } else {
-          console.log(`📩 (${userId}) [OUTRO EVENTO]`, msg);
+          console.log(`📩 (${sessionId}) [OUTRO EVENTO]`, msg);
         }
       } catch (err) {
-        console.log(`📩 (${userId}) [ERRO PARSE]`, data.toString());
+        console.log(`📩 (${sessionId}) [ERRO PARSE]`, data.toString());
       }
     });
   });
@@ -71,19 +70,21 @@ export function startPingMonitor() {
   if (monitorStarted) return;
   monitorStarted = true;
 
-  setInterval(async () => {
+  setInterval(() => {
     const now = Date.now();
-    for (const [userId, lastPing] of lastPingMap.entries()) {
+    for (const [sessionId, lastPing] of lastPingMap.entries()) {
       const diff = now - lastPing;
       if (diff > 60000) {
-        console.warn(`⏱️ Ping timeout detectado para ${userId} (${diff}ms)`);
-        const socket = getBinanceSocket(userId);
+        console.warn(
+          `⏱️ Ping timeout detectado para sessão ${sessionId} (${diff}ms)`
+        );
+        const socket = getBinanceSocket(sessionId);
         if (socket) {
           socket.terminate();
         }
-        socketMap.delete(userId);
-        lastPingMap.delete(userId);
-        reconnectUserSocket(userId);
+        socketMap.delete(sessionId);
+        lastPingMap.delete(sessionId);
+        reconnectUserSocket(sessionId);
       }
     }
   }, 60_000);
