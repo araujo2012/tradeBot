@@ -5,6 +5,7 @@ import { startSocketConsumer } from "./app/socket/socket.consumer";
 import { createServer } from "http";
 import { initializeWebSocketServer } from "./websocket";
 import { bootstrap } from "./app/lib/bootstrap";
+import { startPingMonitor } from "./app/socket/socket.main";
 
 const PORT = process.env.PORT || 3001;
 
@@ -13,6 +14,7 @@ const PORT = process.env.PORT || 3001;
     await connectToRabbitMQ();
     await connectToDatabase();
     startSocketConsumer();
+    startPingMonitor();
 
     // Executa o bootstrap, mas não bloqueia o start do servidor
     bootstrap().catch((err) => {
