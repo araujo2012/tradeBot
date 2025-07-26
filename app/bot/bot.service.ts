@@ -21,30 +21,26 @@ async function updateBot(botId: string, userId: string, updateData: any) {
 async function startBot(botId: string) {
   const bot = await BotModel.findById(botId);
   if (!bot) throw new Error("Bot not found");
-
   const session = await SessionModel.findOne({
     _id: bot.sessionId,
     userId: bot.userId,
     status: "active",
   });
   if (!session) throw new Error("Session for this bot is not active");
-
   const activeOrders = await OrderModel.find({
     botId,
     status: { $in: ["active", "executed", "pending"] },
   });
-
   const channel = getRabbitChannel();
   let cancelSended = 0;
   for (const order of activeOrders) {
     if (order.binanceId !== "") {
       const message = {
-        action: "cancelOrder",
+        action: "syncOrder",
         payload: {
           apiKey: session.apiKey,
           origClientOrderId: order.binanceId,
           symbol: order.symbol,
-          userId: session.userId,
         },
       };
       channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
@@ -53,12 +49,9 @@ async function startBot(botId: string) {
       cancelSended += 1;
     }
   }
-
   startBotJob(botId, session.apiKey);
-
   bot.status = cancelSended > 0 ? "pending" : "active";
   await bot.save();
-
   return bot;
 }
 

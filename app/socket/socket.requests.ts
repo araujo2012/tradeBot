@@ -19,7 +19,6 @@ const privateKey = crypto.createPrivateKey({
   type: "pkcs8",
 });
 
-// Transforma objeto em payload ordenado e assina
 function signPayload(params: Record<string, string | number>): string {
   const sortedKeys = Object.keys(params).sort();
   const payload = sortedKeys.map((key) => `${key}=${params[key]}`).join("&");
@@ -31,7 +30,6 @@ function signPayload(params: Record<string, string | number>): string {
   return signature.toString("base64");
 }
 
-// Obtém offset do Redis ou calcula e salva
 async function getOrSetOffset(): Promise<number> {
   const redisKey = "binance:offset";
   const cached = await redis.get(redisKey);
@@ -44,7 +42,6 @@ async function getOrSetOffset(): Promise<number> {
   return offset;
 }
 
-// Realiza o place order via WebSocket
 export async function socketOrderPlace({
   order,
   clientId,
@@ -270,6 +267,63 @@ export async function socketOrderCancel({
       } catch {
         // ignorar mensagens inválidas
       }
+    };
+
+    socket.on("message", handleMessage);
+    socket.send(JSON.stringify(message));
+  });
+}
+
+export async function socketOrderStatus({
+  apiKey,
+  origClientOrderId,
+  symbol,
+  sessionId,
+}: {
+  apiKey: string;
+  origClientOrderId: string;
+  symbol: string;
+  sessionId: string;
+}): Promise<any> {
+  let socket = getBinanceSocket(sessionId);
+  if (!socket) {
+    await initializeBinanceSocket(sessionId);
+    socket = getBinanceSocket(sessionId);
+    if (!socket) throw new Error("Failed to initialize WebSocket");
+  }
+  const offset = await getOrSetOffset();
+  const timestamp = Date.now() - offset;
+  const params = {
+    apiKey,
+    origClientOrderId,
+    signature: "",
+    symbol,
+    timestamp,
+  };
+  params.signature = signPayload(params);
+
+  const message = {
+    id: crypto.randomUUID(),
+    method: "order.status",
+    params,
+  };
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(
+        new Error("Timeout waiting for response from Binance (order.status)")
+      );
+    }, 10000);
+
+    const handleMessage = (data: Buffer) => {
+      try {
+        const parsed = JSON.parse(data.toString());
+        if (parsed.id !== message.id) return;
+
+        clearTimeout(timeout);
+        socket.off("message", handleMessage);
+        resolve(parsed);
+      } catch {}
     };
 
     socket.on("message", handleMessage);

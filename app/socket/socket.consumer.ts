@@ -8,6 +8,7 @@ import {
   socketUserStream,
   socketOrderPlace,
   socketOrderCancel,
+  socketOrderStatus,
 } from "./socket.requests";
 import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
@@ -130,11 +131,55 @@ async function handleCancelOrder({
   }
 }
 
-export async function handleRestartSession(sessionId: string): Promise<void> {
+async function handleRestartSession(sessionId: string): Promise<void> {
   await handleStartSession(sessionId);
-  const bots = await BotModel.find({ sessionId, status: "active" });
+  const bots = await BotModel.find({
+    sessionId,
+    status: { $in: ["active", "pending"] },
+  });
   for (const bot of bots) {
     botService.startBot(bot._id.toString());
+  }
+}
+
+async function handleSyncOrder(payload: {
+  apiKey: string;
+  origClientOrderId: string;
+  symbol: string;
+  sessionId: string;
+}): Promise<void> {
+  const { origClientOrderId } = payload;
+  const response = await socketOrderStatus(payload);
+  const orderData = response?.result;
+  const pendingOrder = await OrderModel.findOne({
+    binanceId: origClientOrderId,
+  });
+  if (!pendingOrder) {
+    throw new Error(`Invalid origClientOrderId: ${origClientOrderId}`);
+  }
+  if (!orderData || !orderData.clientOrderId) {
+    pendingOrder.status = "closed";
+    pendingOrder.save();
+    throw new Error("Invalid response from Binance (order.status)");
+    return;
+  }
+  const { clientOrderId, executedQty, updateTime } = orderData;
+  const order = await OrderModel.findOne({
+    binanceId: clientOrderId,
+  });
+  if (!order) {
+    pendingOrder.status = "closed";
+    pendingOrder.save();
+    return;
+  }
+  order.status = Number(executedQty) > 0 ? "executed" : "active";
+  if (Number(executedQty) > 0) {
+    const date = new Date(updateTime);
+    order.updateTime = date;
+    order.lastExecutedTime = date;
+  }
+  await order.save();
+  if (order.executedQtd < Number(executedQty)) {
   }
 }
 
@@ -159,6 +204,9 @@ async function processQueue() {
         break;
       case "restartSession":
         handleRestartSession(content.sessionId);
+        break;
+      case "syncOrder":
+        await handleSyncOrder(content.payload);
         break;
       default:
         console.warn("Unknown status:", content.status);
