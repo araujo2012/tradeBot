@@ -1,7 +1,5 @@
 import { Request, Response } from "express";
-import { SessionService } from "./session.service";
-
-const sessionService = new SessionService();
+import { sessionService } from "./session.service";
 
 export async function getSessions(req: Request, res: Response) {
   try {
