@@ -1,7 +1,11 @@
 // app/limits/limits.service.ts
 
 import { getKlines } from "../binance/binance.service";
-import { BinanceStats } from "../binance/binance.stats";
+import {
+  calculateKlineValue,
+  calculateAverage,
+  calculateStandardDeviation,
+} from "../binance/binance.stats";
 import { LimitResult } from "./limits.interface";
 
 export async function calculateBollLimits({
@@ -24,10 +28,9 @@ export async function calculateBollLimits({
       lowerLimit: 0,
     };
   }
-  const stats = new BinanceStats();
-  const klineValues = stats.calculateKlineValue(klinesResult.data);
-  const mean = stats.calculateAverage(klineValues);
-  const standardDeviation = stats.calculateStandardDeviation(klineValues);
+  const klineValues = calculateKlineValue(klinesResult.data);
+  const mean = calculateAverage(klineValues);
+  const standardDeviation = calculateStandardDeviation(klineValues);
   const upperLimit = mean + width * standardDeviation;
   const lowerLimit = mean - width * standardDeviation;
 
