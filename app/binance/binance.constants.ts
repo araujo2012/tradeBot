@@ -31,3 +31,4 @@ export const VALID_SYMBOLS = [
 ];
 
 export const MAX_LIMIT = 500;
+export const FIXED_FETCH_LIMIT = 40;

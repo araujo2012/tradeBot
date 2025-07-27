@@ -5,6 +5,7 @@ import {
   MAX_LIMIT,
   VALID_INTERVALS,
   VALID_SYMBOLS,
+  FIXED_FETCH_LIMIT,
 } from "./binance.constants";
 import { KlinesResponse } from "./binance.interface";
 
@@ -80,14 +81,26 @@ export async function getKlines(
 
   if (limit > MAX_LIMIT) limit = MAX_LIMIT;
 
+  const cacheKey = `klines:${symbol}:${interval}`;
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    const fullData = JSON.parse(cached);
+    return {
+      erro: false,
+      data: fullData.slice(0, limit),
+    };
+  }
+
   try {
     const response = await axios.get(`${BASE_URL}klines`, {
-      params: { symbol, interval, limit },
+      params: { symbol, interval, limit: FIXED_FETCH_LIMIT },
     });
+
+    await redis.set(cacheKey, JSON.stringify(response.data), "EX", 60);
 
     return {
       erro: false,
-      data: response.data,
+      data: response.data.slice(0, limit),
     };
   } catch (error: any) {
     return {
