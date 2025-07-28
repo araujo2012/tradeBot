@@ -38,6 +38,7 @@ async function startBot(botId: string) {
     sessionId: bot.sessionId.toString(),
     symbol: bot.symbol,
     activeOrders,
+    period: 20 + bot.period,
   });
   const syncOrders = activeOrders
     .filter((order) => order.binanceId !== "")

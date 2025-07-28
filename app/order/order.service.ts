@@ -4,6 +4,7 @@ import { intervalList, intervalData, tax } from "./order.constants";
 import type { BotType } from "../bot/bot.type";
 import type { OrderEntry, IntervalType } from "./order.type";
 import {
+  getLastExecutedTimeFromInterval,
   getSpeed,
   getSymbolConfig,
   minutesSince,
@@ -356,30 +357,20 @@ async function sendOrders({
       : false;
 
   if (isMultiplierInvalid) {
-    console.log("[isMultiplierInvalid] - price lower than 10", { order });
     return;
   }
 
   if (order.quantity * order.price < 10) {
-    console.log("price lower than 10", { order });
     return;
   }
 
   const realTimePrice = await getCurrentPrice(symbol);
 
   if (order.direction === "buy" && order.price < realTimePrice.price / 1.02) {
-    console.log("price more then 2% lower", {
-      order,
-      realTimePrice: realTimePrice.price,
-    });
     return;
   }
 
   if (order.direction === "sell" && order.price > realTimePrice.price * 1.02) {
-    console.log("price 2% more higher", {
-      order,
-      realTimePrice: realTimePrice.price,
-    });
     return;
   }
 
@@ -471,12 +462,14 @@ export async function initializeMissingEntryOrders({
   sessionId,
   symbol,
   activeOrders,
+  period,
 }: {
   botId: string;
   userId: string;
   sessionId: string;
   symbol: string;
   activeOrders: any;
+  period: number;
 }): Promise<void> {
   const entryOrders = activeOrders.filter(
     (order: any) => order.type === "entry"
@@ -499,6 +492,7 @@ export async function initializeMissingEntryOrders({
             symbol,
             type: "entry",
             status: "closed",
+            lastExecutedTime: getLastExecutedTimeFromInterval(interval, period),
           })
         );
       }
