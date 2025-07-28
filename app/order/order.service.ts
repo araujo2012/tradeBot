@@ -464,3 +464,45 @@ export async function setNormalOrders(bot: BotType, apiKey: string) {
     sendOrders({ activeOrder, order });
   });
 }
+
+export async function initializeMissingEntryOrders({
+  botId,
+  userId,
+  sessionId,
+  symbol,
+  activeOrders,
+}: {
+  botId: string;
+  userId: string;
+  sessionId: string;
+  symbol: string;
+  activeOrders: any;
+}): Promise<void> {
+  const entryOrders = activeOrders.filter(
+    (order: any) => order.type === "entry"
+  );
+  const promises = [];
+  for (const direction of ["buy", "sell"]) {
+    for (const interval of intervalList) {
+      const exists = entryOrders.find(
+        (order: any) =>
+          order.direction === direction && order.interval === interval
+      );
+      if (!exists) {
+        promises.push(
+          OrderModel.create({
+            botId,
+            userId,
+            sessionId,
+            direction,
+            interval,
+            symbol,
+            type: "entry",
+            status: "closed",
+          })
+        );
+      }
+    }
+  }
+  await Promise.all(promises);
+}

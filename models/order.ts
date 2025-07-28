@@ -7,9 +7,9 @@ const orderSchema = new Schema(
     botId: { type: Schema.Types.ObjectId, ref: "Bot", required: true },
     sessionId: { type: Schema.Types.ObjectId, ref: "Session", required: true },
     symbol: { type: String, required: true },
-    price: { type: Number },
-    quantity: { type: Number },
-    value: { type: Number },
+    price: { type: Number, default: 0 },
+    quantity: { type: Number, default: 0 },
+    value: { type: Number, default: 0 },
     type: {
       type: String,
       enum: ["entry", "normal"],
@@ -26,8 +26,8 @@ const orderSchema = new Schema(
       enum: directionList,
       required: true,
     },
-    binanceId: { type: String, required: true },
-    clientId: { type: String, required: true },
+    binanceId: { type: String, default: "" },
+    clientId: { type: String, default: "" },
     executedQtd: { type: Number, default: 0 },
     status: {
       type: String,

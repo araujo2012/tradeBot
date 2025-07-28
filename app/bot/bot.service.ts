@@ -3,6 +3,7 @@ import { SessionModel } from "../../models/session";
 import { OrderModel } from "../../models/order";
 import { getRabbitChannel, logAndSendToQueue } from "../lib/rabbit";
 import { startBotJob } from "./bot.jobs";
+import { initializeMissingEntryOrders } from "../order/order.service";
 
 async function getBotsByUser(userId: string) {
   return await BotModel.find({ userId });
@@ -31,7 +32,13 @@ async function startBot(botId: string) {
     botId,
     status: { $in: ["active", "executed", "pending"] },
   });
-  const channel = getRabbitChannel();
+  await initializeMissingEntryOrders({
+    botId,
+    userId: bot.userId.toString(),
+    sessionId: bot.sessionId.toString(),
+    symbol: bot.symbol,
+    activeOrders,
+  });
   const syncOrders = activeOrders
     .filter((order) => order.binanceId !== "")
     .map(async (order) => {
