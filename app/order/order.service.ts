@@ -356,7 +356,7 @@ async function sendOrders({
       : false;
 
   if (isMultiplierInvalid) {
-    console.log("price lower than 10", { order });
+    console.log("[isMultiplierInvalid] - price lower than 10", { order });
     return;
   }
 

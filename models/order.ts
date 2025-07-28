@@ -35,8 +35,8 @@ const orderSchema = new Schema(
       required: true,
       default: "closed",
     },
-    lastExecutedTime: { type: Date, default: Date.now },
-    updateTime: { type: Date, default: Date.now },
+    lastExecutedTime: { type: Date },
+    updateTime: { type: Date },
   },
   { timestamps: true }
 );
