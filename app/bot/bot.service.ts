@@ -28,18 +28,20 @@ async function startBot(botId: string) {
     status: "active",
   });
   if (!session) throw new Error("Session for this bot is not active");
-  const activeOrders = await OrderModel.find({
+  const orders = await OrderModel.find({
     botId,
-    status: { $in: ["active", "executed", "pending"] },
   });
   await initializeMissingEntryOrders({
     botId,
     userId: bot.userId.toString(),
     sessionId: bot.sessionId.toString(),
     symbol: bot.symbol,
-    activeOrders,
+    orders,
     period: 20 + bot.period,
   });
+  const activeOrders = orders.filter((order) =>
+    ["active", "executed", "pending"].includes(order.status)
+  );
   const syncOrders = activeOrders
     .filter((order) => order.binanceId !== "")
     .map(async (order) => {

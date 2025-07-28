@@ -461,19 +461,17 @@ export async function initializeMissingEntryOrders({
   userId,
   sessionId,
   symbol,
-  activeOrders,
+  orders,
   period,
 }: {
   botId: string;
   userId: string;
   sessionId: string;
   symbol: string;
-  activeOrders: any;
+  orders: any;
   period: number;
 }): Promise<void> {
-  const entryOrders = activeOrders.filter(
-    (order: any) => order.type === "entry"
-  );
+  const entryOrders = orders.filter((order: any) => order.type === "entry");
   const promises = [];
   for (const direction of ["buy", "sell"]) {
     for (const interval of intervalList) {
