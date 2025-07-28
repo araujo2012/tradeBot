@@ -170,7 +170,7 @@ async function handleSyncOrder(payload: {
     }
     pendingOrder.status = "closed";
     pendingOrder.save();
-    throw new Error("Invalid response from Binance (order.status)");
+    throw new Error("Invalid response from Binance");
   }
   const { clientOrderId, executedQty, updateTime } = orderData;
   const order = (await OrderModel.findOne({
