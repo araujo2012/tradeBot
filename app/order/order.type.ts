@@ -7,13 +7,14 @@ export interface OrderEntry {
   userId: string;
   direction: "buy" | "sell";
   interval: IntervalType;
-  type: "entry";
+  type: "entry" | "normal";
   price: number;
   quantity: number;
   symbol: string;
   value: number;
   period: number;
   apiKey: string;
+  timeMultiplier?: number;
 }
 
 export interface CalculateEntryOrderParams {

@@ -4,12 +4,12 @@ import { IntervalType } from "./order.type";
 import { SymbolConfigModel } from "../../models/symbolConfig";
 
 export const getSpeed = ({
-  isExecuted,
+  isNormal,
   isEntry,
   speed,
   interval,
 }: {
-  isExecuted: boolean;
+  isNormal: boolean;
   isEntry: boolean;
   speed: number;
   interval: IntervalType | undefined;
@@ -19,7 +19,8 @@ export const getSpeed = ({
     : isEntry
     ? 6
     : -1;
-  if (!isExecuted) {
+  //entry
+  if (!isNormal) {
     const total =
       1 + speed * (1 + speed * (1 + speed * (1 + speed * (1 + speed))));
     return Math.pow(speed, intervalValue) / total;
@@ -27,9 +28,11 @@ export const getSpeed = ({
   const total =
     1 +
     speed * (1 + speed * (1 + speed * (1 + speed * (1 + speed * (1 + speed)))));
+  //executed entry or normal
   if (isEntry) {
     return Math.pow(speed, 6 - intervalValue) / total;
   }
+  //normal executed
   return Math.pow(speed, 5 - intervalValue) / total;
 };
 
@@ -62,7 +65,25 @@ export function minutesSince({
   period: number;
   interval: number;
 }): number {
+  if (!date) {
+    return 1;
+  }
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   return Math.floor(diffMs / (period * interval * 60000));
 }
+
+export const normalizeValue = ({
+  value,
+  decimal,
+  isRoundUp,
+}: {
+  value: number;
+  decimal: number;
+  isRoundUp: boolean;
+}) => {
+  value = isRoundUp
+    ? Math.ceil(value * Math.pow(10, decimal))
+    : Math.floor(value * Math.pow(10, decimal));
+  return value / Math.pow(10, decimal);
+};

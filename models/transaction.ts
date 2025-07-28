@@ -7,10 +7,10 @@ const transactionSchema = new Schema(
     botId: { type: Schema.Types.ObjectId, ref: "Bot", required: true },
     sessionId: { type: Schema.Types.ObjectId, ref: "Session", required: true },
     symbol: String,
-    value: Number,
-    price: Number,
-    quantity: Number,
-    executedQtd: Number,
+    value: { type: Number, required: true },
+    price: { type: Number, required: true },
+    quantity: { type: Number, required: true },
+    executedQtd: { type: Number, default: 0 },
     direction: {
       type: String,
       enum: ["buy", "sell"],
@@ -19,7 +19,6 @@ const transactionSchema = new Schema(
     status: {
       type: String,
       enum: ["open", "closed"],
-      required: true,
       default: "open",
     },
     interval: {
@@ -36,7 +35,6 @@ const transactionSchema = new Schema(
       type: String,
       enum: ["entry", "normal"],
       required: true,
-      default: "normal",
     },
     binanceId: { type: String, required: true },
   },

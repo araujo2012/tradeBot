@@ -47,7 +47,7 @@ export async function handleExecutedOrder({
     const multiplier = getSpeed({
       interval,
       speed: order.direction === "buy" ? bot.buySpeed : bot.sellSpeed,
-      isExecuted: true,
+      isNormal: true,
       isEntry: order.type === "entry",
     });
     TransactionModel.create({
@@ -78,7 +78,7 @@ export async function handleExecutedOrder({
       const multiplier = getSpeed({
         interval: undefined,
         speed: bot.buySpeed,
-        isExecuted: true,
+        isNormal: true,
         isEntry: order.type === "entry",
       });
       bot.crypto += multiplier * executedQtd;
@@ -87,7 +87,7 @@ export async function handleExecutedOrder({
       const multiplier = getSpeed({
         interval: undefined,
         speed: bot.sellSpeed,
-        isExecuted: true,
+        isNormal: true,
         isEntry: order.type === "entry",
       });
       bot.brl += multiplier * executedQtd * order.price;
