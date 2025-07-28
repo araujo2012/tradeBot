@@ -11,7 +11,7 @@ import {
 } from "./order.utils";
 import { getRabbitChannel } from "../lib/rabbit";
 import { getCurrentPrice } from "../binance/binance.service";
-import { TransactionModel } from "models/transaction";
+import { TransactionModel } from "../../models/transaction";
 
 function calculateEntryOrder({
   bot,

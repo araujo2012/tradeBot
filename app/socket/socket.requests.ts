@@ -6,7 +6,7 @@ import { getBinanceSocket, initializeBinanceSocket } from "./socket.main";
 import { redis } from "../lib/redis";
 import { OrderEntry } from "app/order/order.type";
 import { WebSocket } from "ws";
-import { WebsocketDataModel } from "models/websocketData";
+import { WebsocketDataModel } from "../../models/websocketData";
 
 // Lê e prepara a chave privada Ed25519
 const PRIVATE_KEY_PATH = path.resolve(

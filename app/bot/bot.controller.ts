@@ -1,7 +1,5 @@
 import { Request, Response } from "express";
-import { BotService } from "./bot.service";
-
-const botService = new BotService();
+import { botService } from "./bot.service";
 
 export async function getBotsByUser(req: Request, res: Response) {
   try {
@@ -53,7 +51,7 @@ export async function startBot(req: Request, res: Response) {
       return res.status(401).json({ error: "User not authenticated" });
     }
     const botId = req.params.botId;
-    const bot = await botService.startBot(botId, userId);
+    const bot = await botService.startBot(botId);
     res.json(bot);
   } catch (error) {
     if (

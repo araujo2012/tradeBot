@@ -1,11 +1,8 @@
-import { getRabbitChannel, logAndSendToQueue } from "./rabbit";
+import { logAndSendToQueue } from "./rabbit";
 import { SessionModel } from "../../models/session";
 
 export async function bootstrap() {
   try {
-    const channel = getRabbitChannel();
-
-    // Buscar todas as sessões ativas
     const activeSessions = await SessionModel.find({ status: "active" });
     console.log(`Encontradas ${activeSessions.length} sessões ativas.`);
 

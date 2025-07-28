@@ -1,4 +1,4 @@
-import { SessionModel } from "models/session";
+import { SessionModel } from "../../models/session";
 import { BotModel } from "../../models/bot";
 import { setEntryOrders, setNormalOrders } from "../order/order.service";
 

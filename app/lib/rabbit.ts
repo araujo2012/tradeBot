@@ -33,6 +33,6 @@ export function logAndSendToQueue(queue: string, payload: any) {
 
   RabbitDataModel.create({
     queue,
-    payload: { payload },
+    payload,
   });
 }

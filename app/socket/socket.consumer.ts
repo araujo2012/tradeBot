@@ -12,8 +12,8 @@ import {
 } from "./socket.requests";
 import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
-import { OrderDoc, OrderEntry } from "app/order/order.type";
-import { handleExecutedOrder } from "app/transaction/transaction.service";
+import { OrderDoc, OrderEntry } from "../order/order.type";
+import { handleExecutedOrder } from "../transaction/transaction.service";
 
 // Rate limit: 5 mensagens por segundo
 const RATE_LIMIT = 5;
@@ -26,23 +26,32 @@ async function handleStartSession(sessionId: string) {
   const session = await SessionModel.findById(sessionId);
   if (!session) throw new Error(`Session not found: ${sessionId}`);
   const { apiKey, userId } = session;
+
   try {
     if (!apiKey) throw new Error(`ApiKey not found: ${sessionId}`);
+
     const logonResult = await socketLogon({ apiKey, sessionId });
     if (logonResult.code && logonResult.code !== 0) {
       throw new Error(
         `Binance logon error: ${logonResult.msg || logonResult.code}`
       );
     }
+
     await socketUserStream(sessionId);
     session.status = "active";
     await session.save();
+
     console.log(`Session ${sessionId} started for user ${sessionId}`);
     sendToUser(userId.toString(), {
       type: "session",
       status: "active",
       sessionId,
     });
+
+    const bots = await BotModel.find({ sessionId, status: "active" });
+    for (const bot of bots) {
+      botService.startBot(bot._id.toString());
+    }
   } catch (err) {
     sendToUser(userId.toString(), {
       type: "session",
