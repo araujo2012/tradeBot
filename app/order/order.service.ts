@@ -1,37 +1,43 @@
 import { calculateBollLimits } from "../limits/limits.service";
 import { OrderModel } from "../../models/order";
-import { intervalList, intervalData } from "./order.constants";
+import { intervalList, intervalData, tax } from "./order.constants";
 import type { BotType } from "../bot/bot.type";
-import type { OrderEntry, IntervalType, OrderDoc } from "./order.type";
-import { getSpeed, getSymbolConfig, minutesSince } from "./order.utils";
+import type { OrderEntry, IntervalType } from "./order.type";
+import {
+  getSpeed,
+  getSymbolConfig,
+  minutesSince,
+  normalizeValue,
+} from "./order.utils";
 import { getRabbitChannel } from "../lib/rabbit";
 import { getCurrentPrice } from "../binance/binance.service";
+import { TransactionModel } from "models/transaction";
 
-export async function calculateEntryOrder({
+function calculateEntryOrder({
   bot,
   interval,
+  isEntry,
+  isNormal,
+  upperLimit,
+  lowerLimit,
+  qtdDecimal,
 }: {
   bot: BotType;
   interval: IntervalType;
-}): Promise<OrderEntry[]> {
-  const { upperLimit, lowerLimit, success, message } =
-    await calculateBollLimits({
-      symbol: bot.symbol,
-      interval,
-      period: bot.period + 20,
-      width: 2.1 + (bot.width - 5) / 50,
-    });
-  if (!success) {
-    throw new Error(message);
-  }
+  isEntry: boolean;
+  isNormal: boolean;
+  upperLimit: number;
+  lowerLimit: number;
+  qtdDecimal: number;
+}) {
   const quantity =
     bot.crypto *
     (1 - bot.sellProtection / 100) *
     getSpeed({
       speed: bot.sellSpeed + 1,
       interval,
-      isExecuted: false,
-      isEntry: true,
+      isNormal,
+      isEntry,
     });
   const value =
     bot.brl *
@@ -39,9 +45,28 @@ export async function calculateEntryOrder({
     getSpeed({
       speed: bot.buySpeed + 1,
       interval,
-      isExecuted: false,
-      isEntry: true,
+      isNormal,
+      isEntry,
     });
+
+  let buyMultiplier = Math.ceil(10 / value);
+  let sellMultiplier = Math.ceil(10 / (quantity * upperLimit));
+  const buyQuantity = normalizeValue({
+    value: (buyMultiplier * value) / lowerLimit,
+    decimal: qtdDecimal,
+    isRoundUp: false,
+  });
+  const sellQuantity = normalizeValue({
+    value: sellMultiplier * quantity,
+    decimal: qtdDecimal,
+    isRoundUp: false,
+  });
+  if (buyQuantity * lowerLimit < 10) {
+    buyMultiplier += 1;
+  }
+  if (sellQuantity * upperLimit < 10) {
+    sellMultiplier += 1;
+  }
 
   const sellOrder: OrderEntry = {
     botId: String(bot._id),
@@ -51,11 +76,16 @@ export async function calculateEntryOrder({
     interval,
     type: "entry",
     price: upperLimit,
-    value: quantity * upperLimit,
-    quantity,
+    value: sellMultiplier * quantity * upperLimit,
+    quantity: normalizeValue({
+      value: sellMultiplier * quantity,
+      decimal: qtdDecimal,
+      isRoundUp: false,
+    }),
     symbol: bot.symbol,
     period: bot.period + 20,
     apiKey: "",
+    timeMultiplier: sellMultiplier,
   };
 
   const buyOrder: OrderEntry = {
@@ -66,50 +96,278 @@ export async function calculateEntryOrder({
     interval,
     type: "entry",
     price: lowerLimit,
-    value,
-    quantity: value / lowerLimit,
+    value:
+      normalizeValue({
+        value: (buyMultiplier * value) / lowerLimit,
+        decimal: qtdDecimal,
+        isRoundUp: false,
+      }) * lowerLimit,
+    quantity: normalizeValue({
+      value: (buyMultiplier * value) / lowerLimit,
+      decimal: qtdDecimal,
+      isRoundUp: false,
+    }),
     symbol: bot.symbol,
     period: bot.period + 20,
     apiKey: "",
+    timeMultiplier: buyMultiplier,
   };
 
   return [buyOrder, sellOrder];
 }
 
-export async function sendOrders({
+async function calculateNormalOrder({
+  bot,
+  interval,
+  upperLimit,
+  lowerLimit,
+  qtdDecimal,
+  priceDecimal,
+}: {
+  bot: BotType;
+  interval: IntervalType;
+  upperLimit: number;
+  lowerLimit: number;
+  qtdDecimal: number;
+  priceDecimal: number;
+}) {
+  const transactions = await TransactionModel.find({
+    status: "open",
+    botId: bot._id,
+    interval,
+  });
+  const buyTransactions = transactions
+    .filter((transaction) => transaction.direction === "buy")
+    .sort((a, b) => a.price - b.price);
+  const sellTransactions = transactions
+    .filter((transaction) => transaction.direction === "sell")
+    .sort((a, b) => b.price - a.price);
+  const minProfit = 1 + (1 + intervalData[interval].profit * bot.profit) * tax;
+  let buyQuantity = sellTransactions
+    .filter((tx) => tx.price > lowerLimit * minProfit)
+    .reduce((total, tx) => total + tx.quantity, 0);
+  let sellQuantity = buyTransactions
+    .filter((tx) => tx.price < upperLimit / minProfit)
+    .reduce((total, tx) => total + tx.quantity, 0);
+  buyQuantity = normalizeValue({
+    value: buyQuantity,
+    decimal: qtdDecimal,
+    isRoundUp: false,
+  });
+  sellQuantity = normalizeValue({
+    value: sellQuantity,
+    decimal: qtdDecimal,
+    isRoundUp: false,
+  });
+  let buyOrder: OrderEntry | null;
+  let sellOrder: OrderEntry | null;
+  if (sellQuantity * upperLimit < 10) {
+    let totalQuantity = 0;
+    let result = 0;
+    let sellPrice = 0;
+    for (const tx of buyTransactions) {
+      totalQuantity += tx.quantity;
+      sellPrice = normalizeValue({
+        value: tx.price * minProfit,
+        decimal: priceDecimal,
+        isRoundUp: true,
+      });
+      result =
+        sellPrice *
+        normalizeValue({
+          value: totalQuantity,
+          decimal: qtdDecimal,
+          isRoundUp: false,
+        });
+      if (result > 10) break;
+    }
+    if (result < 10) {
+      sellOrder = null;
+    } else {
+      totalQuantity = normalizeValue({
+        value: totalQuantity,
+        decimal: qtdDecimal,
+        isRoundUp: false,
+      });
+      sellOrder = {
+        botId: String(bot._id),
+        sessionId: String(bot.sessionId),
+        userId: String(bot.userId),
+        direction: "sell",
+        interval,
+        type: "normal",
+        price: sellPrice,
+        value: totalQuantity * sellPrice,
+        quantity: totalQuantity,
+        symbol: bot.symbol,
+        period: bot.period + 20,
+        apiKey: "",
+      };
+    }
+  } else {
+    sellOrder = {
+      botId: String(bot._id),
+      sessionId: String(bot.sessionId),
+      userId: String(bot.userId),
+      direction: "sell",
+      interval,
+      type: "normal",
+      price: upperLimit,
+      value: sellQuantity * upperLimit,
+      quantity: sellQuantity,
+      symbol: bot.symbol,
+      period: bot.period + 20,
+      apiKey: "",
+    };
+  }
+  if (buyQuantity * lowerLimit < 10) {
+    let totalQuantity = 0;
+    let result = 0;
+    let buyPrice = 0;
+    for (const tx of sellTransactions) {
+      totalQuantity += tx.quantity;
+      buyPrice = normalizeValue({
+        value: tx.price / minProfit,
+        decimal: priceDecimal,
+        isRoundUp: true,
+      });
+      result =
+        buyPrice *
+        normalizeValue({
+          value: totalQuantity,
+          decimal: qtdDecimal,
+          isRoundUp: false,
+        });
+      if (result > 10) break;
+    }
+    if (result < 10) {
+      buyOrder = null;
+    } else {
+      totalQuantity = normalizeValue({
+        value: totalQuantity,
+        decimal: qtdDecimal,
+        isRoundUp: false,
+      });
+      buyOrder = {
+        botId: String(bot._id),
+        sessionId: String(bot.sessionId),
+        userId: String(bot.userId),
+        direction: "buy",
+        interval,
+        type: "normal",
+        price: buyPrice,
+        value: totalQuantity * buyPrice,
+        quantity: totalQuantity,
+        symbol: bot.symbol,
+        period: bot.period + 20,
+        apiKey: "",
+      };
+    }
+  } else {
+    buyOrder = {
+      botId: String(bot._id),
+      sessionId: String(bot.sessionId),
+      userId: String(bot.userId),
+      direction: "buy",
+      interval,
+      type: "normal",
+      price: lowerLimit,
+      value: buyQuantity * lowerLimit,
+      quantity: buyQuantity,
+      symbol: bot.symbol,
+      period: bot.period + 20,
+      apiKey: "",
+    };
+  }
+
+  return [buyOrder, sellOrder];
+}
+
+async function calculateOrder({
+  bot,
+  interval,
+  isEntry,
+  isNormal,
+}: {
+  bot: BotType;
+  interval: IntervalType;
+  isEntry: boolean;
+  isNormal: boolean;
+}): Promise<(OrderEntry | null)[]> {
+  let { upperLimit, lowerLimit, success, message } = await calculateBollLimits({
+    symbol: bot.symbol,
+    interval,
+    period: bot.period + 20,
+    width: 2.1 + (bot.width - 5) / 50,
+  });
+  if (!success) {
+    throw new Error(message);
+  }
+  const { qtdDecimal, priceDecimal } = await getSymbolConfig(bot.symbol);
+  upperLimit = normalizeValue({
+    value: upperLimit,
+    decimal: priceDecimal,
+    isRoundUp: true,
+  });
+  lowerLimit = normalizeValue({
+    value: lowerLimit,
+    decimal: priceDecimal,
+    isRoundUp: false,
+  });
+  if (isEntry) {
+    return calculateEntryOrder({
+      bot,
+      interval,
+      isEntry,
+      isNormal,
+      upperLimit,
+      lowerLimit,
+      qtdDecimal,
+    });
+  }
+  return await calculateNormalOrder({
+    bot,
+    interval,
+    upperLimit,
+    lowerLimit,
+    qtdDecimal,
+    priceDecimal,
+  });
+}
+
+async function sendOrders({
   activeOrder,
   order,
 }: {
   activeOrder: any;
   order: OrderEntry;
 }) {
-  const { symbol, quantity, price, direction } = order;
-  const symbolConfig = await getSymbolConfig(symbol);
-  const { priceDecimal, qtdDecimal } = symbolConfig;
-  order.price =
-    (direction === "buy"
-      ? Math.floor(price * Math.pow(10, priceDecimal))
-      : Math.ceil(price * Math.pow(10, priceDecimal))) /
-    Math.pow(10, priceDecimal);
-  order.quantity =
-    Math.floor(quantity * Math.pow(10, qtdDecimal)) / Math.pow(10, qtdDecimal);
-  const value = order.price * order.quantity;
-  const qtdMultiplier = activeOrder?.lastExecutedTime
-    ? Math.min(
-        value >= 10 ? 1 : Math.ceil(10 / value),
-        minutesSince({
-          date: activeOrder?.lastExecutedTime || new Date(),
-          interval: intervalData[order.interval].timeMultiplier,
-          period: order.period,
-        })
-      )
-    : 1;
-  order.quantity = qtdMultiplier * order.quantity;
-  order.value = order.price * order.quantity;
+  const { symbol } = order;
+  const timeMultiplier = minutesSince({
+    date: activeOrder?.lastExecutedTime,
+    interval: intervalData[order.interval].timeMultiplier,
+    period: order.period,
+  });
+  const isMultiplierInvalid =
+    order.type === "entry"
+      ? timeMultiplier >= (order?.timeMultiplier || 1)
+        ? false
+        : true
+      : false;
+
+  if (isMultiplierInvalid) {
+    console.log("price lower than 10", { order });
+    return;
+  }
+
+  if (order.quantity * order.price < 10) {
+    console.log("price lower than 10", { order });
+    return;
+  }
 
   const realTimePrice = await getCurrentPrice(symbol);
 
-  if (order.direction === "buy" && order.price < realTimePrice.price * 0.98) {
+  if (order.direction === "buy" && order.price < realTimePrice.price / 1.02) {
     console.log("price more then 2% lower", {
       order,
       realTimePrice: realTimePrice.price,
@@ -124,14 +382,7 @@ export async function sendOrders({
     });
     return;
   }
-  if (order.quantity * order.price < 10) {
-    console.log("price lower than 10", { order });
-    return;
-  }
-  //remover
-  if (order.direction === "buy") {
-    order.price = 600000 + intervalData[order.interval].entry;
-  }
+
   const channel = getRabbitChannel();
   const message = {
     action: "createOrder",
@@ -159,17 +410,19 @@ export async function setEntryOrders(bot: BotType, apiKey: string) {
     botId: bot._id,
     type: "entry",
   });
-  const promises: Promise<OrderEntry[]>[] = [];
+  const promises: Promise<(OrderEntry | null)[]>[] = [];
   intervalList.forEach((interval) => {
     promises.push(
-      calculateEntryOrder({
+      calculateOrder({
         bot,
         interval: interval,
+        isEntry: true,
+        isNormal: false,
       })
     );
   });
   const calculatedOrders = await Promise.all(promises);
-  const orders = calculatedOrders.flat();
+  const orders = calculatedOrders.flat().filter((order) => order !== null);
   orders.forEach((order) => {
     const activeOrder =
       entryOrders.find(
@@ -182,4 +435,32 @@ export async function setEntryOrders(bot: BotType, apiKey: string) {
   });
 }
 
-export async function executedOrders(order: OrderDoc) {}
+export async function setNormalOrders(bot: BotType, apiKey: string) {
+  const normalOrders = await OrderModel.find({
+    botId: bot._id,
+    type: "normal",
+  });
+  const promises: Promise<(OrderEntry | null)[]>[] = [];
+  intervalList.forEach((interval) => {
+    promises.push(
+      calculateOrder({
+        bot,
+        interval: interval,
+        isEntry: false,
+        isNormal: true,
+      })
+    );
+  });
+  const calculatedOrders = await Promise.all(promises);
+  const orders = calculatedOrders.flat().filter((order) => order !== null);
+  orders.forEach((order) => {
+    const activeOrder =
+      normalOrders.find(
+        (entryOrder) =>
+          entryOrder.interval === order.interval &&
+          entryOrder.direction === order.direction
+      ) || null;
+    order.apiKey = apiKey;
+    sendOrders({ activeOrder, order });
+  });
+}
