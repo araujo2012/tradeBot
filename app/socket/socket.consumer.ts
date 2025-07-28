@@ -184,7 +184,7 @@ async function handleSyncOrder(payload: {
       `Could not find order: ${origClientOrderId} ou ${clientOrderId}`
     );
   }
-  order.status = Number(executedQty) > 0 ? "executed" : "active";
+  order.status = Number(executedQty) > 0 ? "pending" : "active";
   if (Number(executedQty) > 0) {
     const date = new Date(updateTime);
     order.updateTime = date;

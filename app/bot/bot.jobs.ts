@@ -3,7 +3,7 @@ import { BotModel } from "../../models/bot";
 import { setEntryOrders, setNormalOrders } from "../order/order.service";
 
 export async function runBotJob(botId: string, apiKey: string) {
-  const bot = await BotModel.findById(botId);
+  const bot = await BotModel.findById(botId).lean();
   const session = await SessionModel.findById(bot?.sessionId);
   const canBotRun =
     bot && session && bot.status === "active" && session.status === "active";
