@@ -117,15 +117,15 @@ async function handleCancelOrder({
   apiKey,
   origClientOrderId,
   symbol,
-  userId,
+  sessionId,
 }: {
   apiKey: string;
   origClientOrderId: string;
   symbol: string;
-  userId: string;
+  sessionId: string;
 }) {
   try {
-    await socketOrderCancel({ apiKey, origClientOrderId, symbol, userId });
+    await socketOrderCancel({ apiKey, origClientOrderId, symbol, sessionId });
   } catch (err) {
     console.error("Error creating order:", err);
     throw err;

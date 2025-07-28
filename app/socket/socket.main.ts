@@ -5,6 +5,7 @@ import {
   handlePlaceOrderResponse,
 } from "./socket.responses";
 import { sessionService } from "../session/session.service";
+import { WebsocketDataModel } from "models/websocketData";
 const { reconnectUserSocket } = sessionService;
 const socketMap = new Map<string, WebSocket>();
 const lastPingMap = new Map<string, number>();
@@ -43,6 +44,11 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
     });
 
     ws.on("message", (data) => {
+      WebsocketDataModel.create({
+        sessionId,
+        type: "received",
+        payload: { data },
+      });
       try {
         const msg = JSON.parse(data.toString());
         console.log(msg);

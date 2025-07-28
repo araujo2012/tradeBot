@@ -1,5 +1,6 @@
 import amqp from "amqplib";
 import dotenv from "dotenv";
+import { RabbitDataModel } from "../../models/rabbitData";
 
 dotenv.config();
 
@@ -23,4 +24,15 @@ export async function connectToRabbitMQ() {
 export function getRabbitChannel() {
   if (!channel) throw new Error("RabbitMQ channel not initialized.");
   return channel;
+}
+
+export function logAndSendToQueue(queue: string, payload: any) {
+  const channel = getRabbitChannel();
+  const buffer = Buffer.from(JSON.stringify(payload));
+  channel.sendToQueue(queue, buffer, { persistent: true });
+
+  RabbitDataModel.create({
+    queue,
+    payload: { payload },
+  });
 }

@@ -1,4 +1,4 @@
-import { getRabbitChannel } from "./rabbit";
+import { getRabbitChannel, logAndSendToQueue } from "./rabbit";
 import { SessionModel } from "../../models/session";
 
 export async function bootstrap() {
@@ -15,12 +15,7 @@ export async function bootstrap() {
         sessionId: session._id,
         userId: session.userId,
       };
-      channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
-        persistent: true,
-      });
-      console.log(
-        `Sessão ${session._id} do usuário ${session.userId} enviada para fila.`
-      );
+      logAndSendToQueue("socket", message);
     }
 
     console.log("Bootstrap finalizado.");

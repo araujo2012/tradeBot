@@ -6,6 +6,7 @@ import { getBinanceSocket, initializeBinanceSocket } from "./socket.main";
 import { redis } from "../lib/redis";
 import { OrderEntry } from "app/order/order.type";
 import { WebSocket } from "ws";
+import { WebsocketDataModel } from "models/websocketData";
 
 // Lê e prepara a chave privada Ed25519
 const PRIVATE_KEY_PATH = path.resolve(
@@ -49,11 +50,11 @@ export async function socketOrderPlace({
   order: OrderEntry;
   clientId: string;
 }): Promise<any> {
-  const { userId, apiKey } = order;
-  let socket = getBinanceSocket(userId);
+  const { sessionId, apiKey } = order;
+  let socket = getBinanceSocket(sessionId);
   if (!socket) {
-    await initializeBinanceSocket(userId);
-    socket = getBinanceSocket(userId);
+    await initializeBinanceSocket(sessionId);
+    socket = getBinanceSocket(sessionId);
   }
 
   if (!socket) {
@@ -108,7 +109,11 @@ export async function socketOrderPlace({
         // ignorar mensagens inválidas
       }
     };
-
+    WebsocketDataModel.create({
+      sessionId,
+      type: "sended",
+      payload: { message },
+    });
     socket.on("message", handleMessage);
     socket.send(JSON.stringify(message));
   });
@@ -146,7 +151,11 @@ export async function socketUserStream(sessionId: string): Promise<any> {
         // ignorar mensagens inválidas
       }
     };
-
+    WebsocketDataModel.create({
+      sessionId,
+      type: "sended",
+      payload: { message },
+    });
     socket.on("message", handleMessage);
     socket.send(JSON.stringify(message));
   });
@@ -200,7 +209,11 @@ export async function socketLogon({
         // ignorar mensagens inválidas
       }
     };
-
+    WebsocketDataModel.create({
+      sessionId,
+      type: "sended",
+      payload: { message },
+    });
     socket.on("message", handleMessage);
     socket.send(JSON.stringify(message));
   });
@@ -210,18 +223,18 @@ export async function socketOrderCancel({
   apiKey,
   symbol,
   origClientOrderId,
-  userId,
+  sessionId,
 }: {
   apiKey: string;
   symbol: string;
   origClientOrderId: string;
-  userId: string;
+  sessionId: string;
 }): Promise<any> {
   // Obter ou inicializar o socket da Binance
-  let socket = getBinanceSocket(userId);
+  let socket = getBinanceSocket(sessionId);
   if (!socket) {
-    await initializeBinanceSocket(userId);
-    socket = getBinanceSocket(userId);
+    await initializeBinanceSocket(sessionId);
+    socket = getBinanceSocket(sessionId);
   }
 
   if (!socket) {
@@ -268,7 +281,11 @@ export async function socketOrderCancel({
         // ignorar mensagens inválidas
       }
     };
-
+    WebsocketDataModel.create({
+      sessionId,
+      type: "sended",
+      payload: { message },
+    });
     socket.on("message", handleMessage);
     socket.send(JSON.stringify(message));
   });
@@ -325,7 +342,11 @@ export async function socketOrderStatus({
         resolve(parsed);
       } catch {}
     };
-
+    WebsocketDataModel.create({
+      sessionId,
+      type: "sended",
+      payload: { message },
+    });
     socket.on("message", handleMessage);
     socket.send(JSON.stringify(message));
   });

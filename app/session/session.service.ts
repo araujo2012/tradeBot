@@ -1,5 +1,5 @@
 import { SessionModel } from "../../models/session";
-import { getRabbitChannel } from "../lib/rabbit";
+import { getRabbitChannel, logAndSendToQueue } from "../lib/rabbit";
 
 // Buscar todas as sessões de um usuário
 async function getSessions(userId: string) {
@@ -63,9 +63,7 @@ async function startSession(sessionId: string) {
     action: "startSession",
     sessionId,
   };
-  channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
-    persistent: true,
-  });
+  logAndSendToQueue("socket", message);
 
   return { message: "Session start request sent to queue" };
 }
@@ -78,9 +76,7 @@ async function stopSession(sessionId: string, userId: string) {
     sessionId,
     userId,
   };
-  channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
-    persistent: true,
-  });
+  logAndSendToQueue("socket", message);
 
   return { message: "Session stop request sent to queue" };
 }
@@ -99,9 +95,7 @@ async function reconnectUserSocket(sessionId: string) {
     action: "restartSession",
     sessionId: sessionId,
   };
-  channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
-    persistent: true,
-  });
+  logAndSendToQueue("socket", message);
 }
 
 export const sessionService = {

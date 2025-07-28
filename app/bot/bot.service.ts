@@ -1,7 +1,7 @@
 import { BotModel } from "../../models/bot";
 import { SessionModel } from "../../models/session";
 import { OrderModel } from "../../models/order";
-import { getRabbitChannel } from "../lib/rabbit";
+import { getRabbitChannel, logAndSendToQueue } from "../lib/rabbit";
 import { startBotJob } from "./bot.jobs";
 
 async function getBotsByUser(userId: string) {
@@ -47,10 +47,7 @@ async function startBot(botId: string) {
           sessionId: session._id.toString(),
         },
       };
-
-      channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
-        persistent: true,
-      });
+      logAndSendToQueue("socket", message);
 
       return 1;
     });
