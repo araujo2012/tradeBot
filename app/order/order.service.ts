@@ -351,26 +351,57 @@ async function sendOrders({
   });
   const isMultiplierInvalid =
     order.type === "entry"
-      ? timeMultiplier >= (order?.timeMultiplier || 1)
+      ? Math.floor(timeMultiplier) >= (order?.timeMultiplier || 1)
         ? false
         : true
       : false;
 
   if (isMultiplierInvalid) {
+    console.log(
+      "isMultiplierInvalid - ",
+      Math.floor(timeMultiplier * 100) / 100,
+      order?.timeMultiplier,
+      order.type,
+      order.interval,
+      order.direction
+    );
     return;
   }
 
   if (order.quantity * order.price < 10) {
+    console.log(
+      "less than 10 - ",
+      order.quantity * order.price,
+      order.type,
+      order.interval,
+      order.direction
+    );
     return;
   }
 
   const realTimePrice = await getCurrentPrice(symbol);
 
   if (order.direction === "buy" && order.price < realTimePrice.price / 1.02) {
+    console.log(
+      "less than 2% - ",
+      order.price,
+      realTimePrice.price / 1.02,
+      order.type,
+      order.interval,
+      order.direction
+    );
     return;
   }
 
   if (order.direction === "sell" && order.price > realTimePrice.price * 1.02) {
+    console.log(
+      "higher than 2% - ",
+      order.price,
+      realTimePrice.price * 1.02,
+      order.type,
+      order.interval,
+      order.direction
+    );
     return;
   }
 
@@ -385,12 +416,16 @@ async function sendOrders({
   const isUpdateQuantity = order.quantity !== activeOrder.quantity;
   if (isUpdateQuantity) {
     console.log("isUpdateQuantity", order);
+    message.action = "cancelOrder";
+    logAndSendToQueue("socket", message);
     return;
   }
   const isUpdatePrice =
     Math.abs(order.price - activeOrder.price) >= order.price * 0.001;
   if (isUpdatePrice) {
     console.log("isUpdatePrice", order);
+    message.action = "replaceOrder";
+    logAndSendToQueue("socket", message);
     return;
   }
 }
