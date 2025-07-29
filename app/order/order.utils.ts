@@ -70,7 +70,7 @@ export function minutesSince({
   }
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
-  return Math.floor(diffMs / (period * interval * 60000));
+  return diffMs / (period * interval * 60000);
 }
 
 export const normalizeValue = ({
