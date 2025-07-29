@@ -87,7 +87,7 @@ export async function getKlines(
     const fullData = JSON.parse(cached);
     return {
       erro: false,
-      data: fullData.slice(0, limit),
+      data: fullData.reverse().slice(0, limit),
     };
   }
 
@@ -100,7 +100,7 @@ export async function getKlines(
 
     return {
       erro: false,
-      data: response.data.slice(0, limit),
+      data: response.data.reverse().slice(0, limit),
     };
   } catch (error: any) {
     return {
