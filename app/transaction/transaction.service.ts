@@ -112,6 +112,11 @@ export async function handleExecutedOrder({
       };
       await updateTransactionsByExecutedQtd({ executedQtd, params });
     }
+  } else {
+    console.log(
+      "[TRANSACTION ERROR] - ",
+      transactions.map((transaction: any) => transaction.reason)
+    );
   }
 }
 
