@@ -1,6 +1,9 @@
 import { SessionModel } from "../../models/session";
 import { BotModel } from "../../models/bot";
 import { setEntryOrders, setNormalOrders } from "../order/order.service";
+import { OrderModel } from "../../models/order";
+import { handleExecutedOrder } from "../transaction/transaction.service";
+import { OrderDoc } from "../order/order.type";
 
 export async function runBotJob(botId: string, apiKey: string) {
   const bot = await BotModel.findById(botId).lean();
@@ -8,6 +11,17 @@ export async function runBotJob(botId: string, apiKey: string) {
   const canBotRun =
     bot && session && bot.status === "active" && session.status === "active";
   if (canBotRun) {
+    const promises = [];
+    const orders = (await OrderModel.find({
+      botId: botId,
+      status: "executed",
+    })) as OrderDoc[];
+    for (const order of orders) {
+      promises.push(
+        handleExecutedOrder({ order, executedQtd: order.executedQtd })
+      );
+    }
+    await Promise.all(promises);
     setEntryOrders(bot, apiKey);
     setNormalOrders(bot, apiKey);
   }

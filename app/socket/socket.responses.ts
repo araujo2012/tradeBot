@@ -1,8 +1,8 @@
 import { OrderModel } from "../../models/order";
 import { handleExecutedOrder } from "../transaction/transaction.service";
 import { OrderDoc } from "../order/order.type";
-import { logAndSendToQueue } from "app/lib/rabbit";
-import { SessionModel } from "models/session";
+import { logAndSendToQueue } from "../lib/rabbit";
+import { SessionModel } from "../../models/session";
 
 export async function handlePlaceOrderResponse(response: any) {
   const { id, result } = response;
