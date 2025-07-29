@@ -36,8 +36,9 @@ export async function handlePlaceOrderResponse(response: any) {
 //adicionar logica de ordens executadas
 export async function handleCancelOrderResponse(response: any) {
   try {
-    const { C: binanceId, z } = response;
+    const { C: binanceId, z, Z } = response;
     const executedQtd = Number(z);
+    const executedPrice = Number(Z) / executedQtd;
     const order: OrderDoc | null = await OrderModel.findOne({ binanceId });
     if (!order) {
       return;
@@ -52,6 +53,7 @@ export async function handleCancelOrderResponse(response: any) {
       await handleExecutedOrder({
         order,
         executedQtd: executedQtd - order.executedQtd,
+        executedPrice,
       });
     } else {
       order.status = "closed";
@@ -65,8 +67,9 @@ export async function handleCancelOrderResponse(response: any) {
 
 export async function handleFilledOrderResponse(response: any) {
   try {
-    const { C: binanceId, z } = response;
+    const { C: binanceId, z, Z } = response;
     const executedQtd = Number(z);
+    const executedPrice = Number(Z) / executedQtd;
     const order: OrderDoc | null = await OrderModel.findOne({ binanceId });
     if (!order || executedQtd === 0) {
       return;
@@ -78,6 +81,7 @@ export async function handleFilledOrderResponse(response: any) {
     await handleExecutedOrder({
       order,
       executedQtd,
+      executedPrice,
     });
     return response;
   } catch (error) {
@@ -87,7 +91,7 @@ export async function handleFilledOrderResponse(response: any) {
 
 export async function handlePartiallyFilledOrderResponse(response: any) {
   try {
-    const { C: binanceId, z } = response;
+    const { c: binanceId } = response;
     const order: OrderDoc | null = await OrderModel.findOne({ binanceId });
     const session = await SessionModel.findById(order?.sessionId).lean();
     if (!session || !order) {

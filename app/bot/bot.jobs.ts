@@ -18,7 +18,11 @@ export async function runBotJob(botId: string, apiKey: string) {
     })) as OrderDoc[];
     for (const order of orders) {
       promises.push(
-        handleExecutedOrder({ order, executedQtd: order.executedQtd })
+        handleExecutedOrder({
+          order,
+          executedQtd: order.executedQtd,
+          executedPrice: order.price,
+        })
       );
     }
     await Promise.all(promises);

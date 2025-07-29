@@ -34,11 +34,13 @@ interface MatchParams {
 interface HandleExecutedOrderParams {
   order: OrderDoc;
   executedQtd: number;
+  executedPrice: number;
 }
 
 export async function handleExecutedOrder({
   order,
   executedQtd,
+  executedPrice,
 }: HandleExecutedOrderParams) {
   const bot = await BotModel.findById(order.botId);
   if (!bot) throw new Error(`Bot ${order.botId} not found`);
@@ -46,7 +48,7 @@ export async function handleExecutedOrder({
   const promises = intervalList.map((interval) => {
     const multiplier = getSpeed({
       interval,
-      speed: order.direction === "buy" ? bot.buySpeed : bot.sellSpeed,
+      speed: 1 + (order.direction === "buy" ? bot.buySpeed : bot.sellSpeed),
       isNormal: true,
       isEntry: order.type === "entry",
     });
@@ -58,9 +60,9 @@ export async function handleExecutedOrder({
       interval,
       fromInterval: order.interval,
       type: order.type,
-      price: order.price,
+      price: executedPrice,
       binanceId: order.binanceId,
-      value: executedQtd * order.price * multiplier,
+      value: executedQtd * executedPrice * multiplier,
       quantity: executedQtd * multiplier,
       direction: order.direction,
     });
@@ -77,7 +79,7 @@ export async function handleExecutedOrder({
     if (order.direction === "buy") {
       const multiplier = getSpeed({
         interval: undefined,
-        speed: bot.buySpeed,
+        speed: 1 + bot.buySpeed,
         isNormal: true,
         isEntry: order.type === "entry",
       });
@@ -86,7 +88,7 @@ export async function handleExecutedOrder({
     if (order.direction === "sell") {
       const multiplier = getSpeed({
         interval: undefined,
-        speed: bot.sellSpeed,
+        speed: 1 + bot.sellSpeed,
         isNormal: true,
         isEntry: order.type === "entry",
       });

@@ -172,7 +172,8 @@ async function handleSyncOrder(payload: {
     pendingOrder.save();
     throw new Error("Invalid response from Binance");
   }
-  const { clientOrderId, executedQty, updateTime } = orderData;
+  const { clientOrderId, executedQty, updateTime, cummulativeQuoteQty } =
+    orderData;
   const order = (await OrderModel.findOne({
     binanceId: { $in: [clientOrderId, origClientOrderId] },
   })) as OrderDoc | null;
@@ -195,6 +196,7 @@ async function handleSyncOrder(payload: {
     await handleExecutedOrder({
       order,
       executedQtd: Number(executedQty) - order.executedQtd,
+      executedPrice: Number(cummulativeQuoteQty) / Number(executedQty),
     });
   }
   const activeOrders = await OrderModel.find({
