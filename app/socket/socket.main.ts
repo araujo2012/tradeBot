@@ -71,6 +71,8 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
           "symbol" in msg.result
         ) {
           handlePlaceOrderResponse(msg);
+        } else if (msg?.event?.e === "outboundAccountPosition") {
+          console.log("outboundAccountPosition - ", msg?.event.B);
         } else {
           console.log(`📩 (${sessionId}) [OUTRO EVENTO]`, msg);
         }

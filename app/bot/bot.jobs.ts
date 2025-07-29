@@ -20,7 +20,7 @@ export async function runBotJob(botId: string, apiKey: string) {
       promises.push(
         handleExecutedOrder({
           order,
-          executedQtd: order.executedQtd,
+          executedQtd: order.quantity - order.executedQtd,
           executedPrice: order.price,
         })
       );

@@ -103,9 +103,9 @@ export async function handleExecutedOrder({
     await bot.save();
     if (order.type === "normal") {
       const params = {
-        userId: order.userId,
-        botId: order.userId,
-        sessionId: order.sessionId,
+        userId: order.userId.toString(),
+        botId: order.botId.toString(),
+        sessionId: order.sessionId.toString(),
         interval: order.interval,
         direction: (order.direction === "buy" ? "sell" : "buy") as
           | "sell"
@@ -125,11 +125,11 @@ export async function updateTransactionsByExecutedQtd({
 }) {
   const sortOrder = params.direction === "buy" ? 1 : -1;
 
-  const transactions: TransactionDoc[] = await TransactionModel.find({
+  const transactions = await TransactionModel.find({
     ...params,
     status: "open",
   })
-    .projection("quantity executedQtd status")
+    .select("quantity executedQtd status")
     .sort({ price: sortOrder });
 
   const promises: Promise<any>[] = transactions.map((transaction) => {
