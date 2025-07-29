@@ -310,10 +310,9 @@ export async function socketOrderStatus({
   }
   const offset = await getOrSetOffset();
   const timestamp = Date.now() - offset;
-  const params = {
+  const params: any = {
     apiKey,
     origClientOrderId,
-    signature: "",
     symbol,
     timestamp,
   };
