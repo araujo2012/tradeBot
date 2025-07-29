@@ -52,7 +52,7 @@ export async function handleExecutedOrder({
       isNormal: true,
       isEntry: order.type === "entry",
     });
-    TransactionModel.create({
+    return TransactionModel.create({
       userId: order.userId,
       botId: order.botId,
       sessionId: order.sessionId,
@@ -68,7 +68,6 @@ export async function handleExecutedOrder({
     });
   });
   const transactions = await Promise.allSettled(promises);
-
   const successTransaction = transactions.find(
     (transaction) => transaction.status === "fulfilled"
   );

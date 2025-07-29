@@ -5,9 +5,9 @@ import { logAndSendToQueue } from "../lib/rabbit";
 import { SessionModel } from "../../models/session";
 
 export async function handlePlaceOrderResponse(response: any) {
-  const { id, result } = response;
-  const { executedQty, clientOrderId, status } = result || {};
-  const order = await OrderModel.findOne({ clientId: id });
+  const { result } = response;
+  const { clientOrderId, status } = result || {};
+  const order = await OrderModel.findOne({ binanceId: clientOrderId });
 
   if (order) {
     order.binanceId = clientOrderId;
@@ -65,6 +65,7 @@ export async function handleFilledOrderResponse(response: any) {
     if (!order || executedQtd === 0) {
       return;
     }
+    order.binanceId = binanceId;
     order.status = "pending";
     order.executedQtd = executedQtd;
     order.lastExecutedTime = new Date();

@@ -214,7 +214,12 @@ async function handleSyncOrder(payload: {
     status: "pending",
   });
   if (activeOrders.length === 0) {
-    BotModel.updateOne({ _id: "order.botId" }, { status: "active" });
+    const bot = await BotModel.findById(order.botId);
+    if (!bot) {
+      return;
+    }
+    bot.status = "active";
+    await bot.save();
   }
 }
 
