@@ -3,6 +3,7 @@ import {
   handleCancelOrderResponse,
   handleErrors,
   handleFilledOrderResponse,
+  handlePartiallyFilledOrderResponse,
   handlePlaceOrderResponse,
 } from "./socket.responses";
 import { sessionService } from "../session/session.service";
@@ -59,6 +60,8 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
             handleCancelOrderResponse(msg.event);
           } else if (msg?.event?.X === "FILLED") {
             handleFilledOrderResponse(msg.event);
+          } else if (msg?.event?.X === "PARTIALLY_FILLED") {
+            handlePartiallyFilledOrderResponse(msg.event);
           }
         } else if (
           msg.id &&

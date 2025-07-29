@@ -1,6 +1,8 @@
 import { OrderModel } from "../../models/order";
 import { handleExecutedOrder } from "../transaction/transaction.service";
 import { OrderDoc } from "../order/order.type";
+import { logAndSendToQueue } from "app/lib/rabbit";
+import { SessionModel } from "models/session";
 
 export async function handlePlaceOrderResponse(response: any) {
   const { id, result } = response;
@@ -78,6 +80,30 @@ export async function handleFilledOrderResponse(response: any) {
       executedQtd,
     });
     return response;
+  } catch (error) {
+    console.log("handleCancelOrderResponse - ", error);
+  }
+}
+
+export async function handlePartiallyFilledOrderResponse(response: any) {
+  try {
+    const { C: binanceId, z } = response;
+    const order: OrderDoc | null = await OrderModel.findOne({ binanceId });
+    const session = await SessionModel.findById(order?.sessionId).lean();
+    if (!session || !order) {
+      console.log("Could not find session or order", response);
+      return;
+    }
+    const message = {
+      action: "cancelOrder",
+      payload: {
+        apiKey: session.apiKey,
+        origClientOrderId: order.binanceId,
+        symbol: order.symbol,
+        sessionId: session._id.toString(),
+      },
+    };
+    logAndSendToQueue("socket", message);
   } catch (error) {
     console.log("handleCancelOrderResponse - ", error);
   }
