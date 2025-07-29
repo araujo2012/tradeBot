@@ -36,7 +36,7 @@ export async function handlePlaceOrderResponse(response: any) {
 //adicionar logica de ordens executadas
 export async function handleCancelOrderResponse(response: any) {
   try {
-    const { C: binanceId, z, Z } = response;
+    const { c: binanceId, z, Z } = response;
     const executedQtd = Number(z);
     const executedPrice = Number(Z) / executedQtd;
     const order: OrderDoc | null = await OrderModel.findOne({ binanceId });
@@ -67,7 +67,7 @@ export async function handleCancelOrderResponse(response: any) {
 
 export async function handleFilledOrderResponse(response: any) {
   try {
-    const { C: binanceId, z, Z } = response;
+    const { c: binanceId, z, Z } = response;
     const executedQtd = Number(z);
     const executedPrice = Number(Z) / executedQtd;
     const order: OrderDoc | null = await OrderModel.findOne({ binanceId });
