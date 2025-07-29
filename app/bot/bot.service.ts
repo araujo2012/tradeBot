@@ -40,7 +40,7 @@ async function startBot(botId: string) {
     period: 20 + bot.period,
   });
   const activeOrders = orders.filter((order) =>
-    ["active", "executed", "pending"].includes(order.status)
+    ["active", "pending"].includes(order.status)
   );
   const syncOrders = activeOrders
     .filter((order) => order.binanceId !== "")
