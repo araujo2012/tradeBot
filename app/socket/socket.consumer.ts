@@ -94,6 +94,7 @@ async function handleCreateOrder(order: OrderEntry) {
       binanceId: "",
       status: "pending",
       clientId: clientId,
+      executedQtd: 0,
     };
 
     const savedOrder = await OrderModel.findOneAndUpdate(
@@ -116,6 +117,7 @@ async function handleCreateOrder(order: OrderEntry) {
     );
 
     const result = await socketOrderPlace({ order, clientId });
+    console.log({ result });
   } catch (err) {
     console.error("Error creating order:", err);
     throw err;

@@ -5,26 +5,26 @@ import { logAndSendToQueue } from "../lib/rabbit";
 import { SessionModel } from "../../models/session";
 
 export async function handlePlaceOrderResponse(response: any) {
-  const { result } = response;
-  const { clientOrderId, status } = result || {};
-  const order = await OrderModel.findOne({ binanceId: clientOrderId });
+  const { id, result } = response;
+  const { clientOrderId, status, executedQty, cummulativeQuoteQty } =
+    result || {};
+  const order = await OrderModel.findOne({ clientId: id });
 
   if (order) {
     order.binanceId = clientOrderId;
     if (status === "NEW") {
       order.status = "active";
+      order.executedQtd = 0;
       await order.save();
-      console.log(`[Binance] Ordem criada com binanceId: ${order}`);
+      console.log(`[Binance] Ordem criada: ${order}`);
     }
     if (status === "FILLED") {
       order.status = "executed";
+      order.executedQtd = Number(executedQty);
+      order.lastExecutedTime = new Date();
+      order.price = Number(cummulativeQuoteQty) / Number(executedQty);
       await order.save();
-      console.log(`[Binance] Ordem criada com binanceId: ${order}`);
-    }
-    if (status === "CANCELED") {
-      order.status = "closed";
-      await order.save();
-      console.log(`[Binance] Ordem criada com binanceId: ${order}`);
+      console.log(`[Binance] Ordem executada: ${order}`);
     }
   } else {
     console.warn(
@@ -72,7 +72,8 @@ export async function handleFilledOrderResponse(response: any) {
     const executedQtd = Number(z);
     const executedPrice = Number(Z) / executedQtd;
     const order: OrderDoc | null = await OrderModel.findOne({ binanceId });
-    if (!order || executedQtd === 0) {
+    if (!order) {
+      console.log("[ORDER NOT FOUND] - ", { order });
       return;
     }
     order.binanceId = binanceId;
