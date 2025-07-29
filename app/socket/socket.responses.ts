@@ -13,18 +13,9 @@ export async function handlePlaceOrderResponse(response: any) {
     order.binanceId = clientOrderId;
     if (status === "NEW") {
       order.status = "active";
+      await order.save();
+      console.log(`[Binance] Ordem criada com binanceId: ${order}`);
     }
-    if (status === "FILLED" || Number(executedQty) > 0) {
-      order.executedQtd = Number(executedQty);
-      order.status = "executed";
-      if (Number(executedQty) > 0) {
-        order.lastExecutedTime = new Date();
-      }
-    }
-    await order.save();
-    console.log(
-      `[Binance] Ordem atualizada com binanceId: ${clientOrderId}, status: ${order.status}`
-    );
   } else {
     console.warn(
       `[Binance] Nenhuma ordem correspondente encontrada para atualizar binanceId: ${clientOrderId}`

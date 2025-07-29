@@ -172,8 +172,13 @@ async function handleSyncOrder(payload: {
     pendingOrder.save();
     throw new Error("Invalid response from Binance");
   }
-  const { clientOrderId, executedQty, updateTime, cummulativeQuoteQty } =
-    orderData;
+  const {
+    clientOrderId,
+    executedQty,
+    updateTime,
+    cummulativeQuoteQty,
+    status,
+  } = orderData;
   const order = (await OrderModel.findOne({
     binanceId: { $in: [clientOrderId, origClientOrderId] },
   })) as OrderDoc | null;
@@ -185,7 +190,12 @@ async function handleSyncOrder(payload: {
       `Could not find order: ${origClientOrderId} ou ${clientOrderId}`
     );
   }
-  order.status = Number(executedQty) > 0 ? "pending" : "active";
+  order.status =
+    Number(executedQty) > 0
+      ? "pending"
+      : status === "CANCELED"
+      ? "closed"
+      : "active";
   if (Number(executedQty) > 0) {
     const date = new Date(updateTime);
     order.updateTime = date;
@@ -203,7 +213,7 @@ async function handleSyncOrder(payload: {
     botId: order.botId,
     status: "pending",
   });
-  if (!activeOrders) {
+  if (activeOrders.length === 0) {
     BotModel.updateOne({ _id: "order.botId" }, { status: "active" });
   }
 }
