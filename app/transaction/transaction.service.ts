@@ -84,6 +84,9 @@ export async function handleExecutedOrder({
         isEntry: order.type === "entry",
       });
       bot.crypto += multiplier * executedQtd;
+      if (order.type === "entry") {
+        bot.brl -= executedQtd * order.price;
+      }
     }
     if (order.direction === "sell") {
       const multiplier = getSpeed({
@@ -93,6 +96,9 @@ export async function handleExecutedOrder({
         isEntry: order.type === "entry",
       });
       bot.brl += multiplier * executedQtd * order.price;
+      if (order.type === "entry") {
+        bot.crypto -= executedQtd;
+      }
     }
     await bot.save();
     if (order.type === "normal") {
