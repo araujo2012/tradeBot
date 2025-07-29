@@ -41,21 +41,42 @@ export async function handleCancelOrderResponse(response: any) {
       return;
     }
     if (order.executedQtd > 0) {
-      if (order.status !== "executed") {
-        order.status = "executed";
-        await order.save();
-      }
       order.executedQtd = executedQtd;
       order.lastExecutedTime = new Date();
     }
-    order.status = "closed";
-    await order.save();
     if (executedQtd - order.executedQtd > 0) {
+      order.status = "pending";
+      await order.save();
       await handleExecutedOrder({
         order,
         executedQtd: executedQtd - order.executedQtd,
       });
+    } else {
+      order.status = "closed";
+      await order.save();
     }
+    return response;
+  } catch (error) {
+    console.log("handleCancelOrderResponse - ", error);
+  }
+}
+
+export async function handleFilledOrderResponse(response: any) {
+  try {
+    const { C: binanceId, z } = response;
+    const executedQtd = Number(z);
+    const order: OrderDoc | null = await OrderModel.findOne({ binanceId });
+    if (!order || executedQtd === 0) {
+      return;
+    }
+    order.status = "pending";
+    order.executedQtd = executedQtd;
+    order.lastExecutedTime = new Date();
+    await order.save();
+    await handleExecutedOrder({
+      order,
+      executedQtd,
+    });
     return response;
   } catch (error) {
     console.log("handleCancelOrderResponse - ", error);

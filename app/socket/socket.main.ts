@@ -2,6 +2,7 @@ import WebSocket from "ws";
 import {
   handleCancelOrderResponse,
   handleErrors,
+  handleFilledOrderResponse,
   handlePlaceOrderResponse,
 } from "./socket.responses";
 import { sessionService } from "../session/session.service";
@@ -56,6 +57,8 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
         } else if (msg?.event?.e === "executionReport") {
           if (msg?.event?.X === "CANCELED") {
             handleCancelOrderResponse(msg.event);
+          } else if (msg?.event?.X === "FILLED") {
+            handleFilledOrderResponse(msg.event);
           }
         } else if (
           msg.id &&
