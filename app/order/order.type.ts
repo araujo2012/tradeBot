@@ -25,6 +25,7 @@ export interface CalculateEntryOrderParams {
 export type IntervalType = "1m" | "5m" | "15m" | "1h" | "4h" | "1d";
 
 export type OrderDoc = Document & {
+  _id: string;
   userId: string;
   botId: string;
   sessionId: string;

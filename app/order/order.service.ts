@@ -10,7 +10,7 @@ import {
   minutesSince,
   normalizeValue,
 } from "./order.utils";
-import { getRabbitChannel } from "../lib/rabbit";
+import { getRabbitChannel, logAndSendToQueue } from "../lib/rabbit";
 import { getCurrentPrice } from "../binance/binance.service";
 import { TransactionModel } from "../../models/transaction";
 
@@ -374,24 +374,23 @@ async function sendOrders({
     return;
   }
 
-  const channel = getRabbitChannel();
   const message = {
     action: "createOrder",
     payload: order,
   };
-  if (!activeOrder || ["closed", "pending"].includes(activeOrder.status)) {
-    channel.sendToQueue("socket", Buffer.from(JSON.stringify(message)), {
-      persistent: true,
-    });
+  if (!activeOrder || activeOrder.status === "closed") {
+    logAndSendToQueue("socket", message);
     return;
   }
   const isUpdateQuantity = order.quantity !== activeOrder.quantity;
   if (isUpdateQuantity) {
+    console.log("isUpdateQuantity", order);
     return;
   }
   const isUpdatePrice =
     Math.abs(order.price - activeOrder.price) >= order.price * 0.001;
   if (isUpdatePrice) {
+    console.log("isUpdatePrice", order);
     return;
   }
 }

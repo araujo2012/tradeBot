@@ -16,6 +16,16 @@ export async function handlePlaceOrderResponse(response: any) {
       await order.save();
       console.log(`[Binance] Ordem criada com binanceId: ${order}`);
     }
+    if (status === "FILLED") {
+      order.status = "executed";
+      await order.save();
+      console.log(`[Binance] Ordem criada com binanceId: ${order}`);
+    }
+    if (status === "CANCELED") {
+      order.status = "closed";
+      await order.save();
+      console.log(`[Binance] Ordem criada com binanceId: ${order}`);
+    }
   } else {
     console.warn(
       `[Binance] Nenhuma ordem correspondente encontrada para atualizar binanceId: ${clientOrderId}`
@@ -39,7 +49,7 @@ export async function handleCancelOrderResponse(response: any) {
       order.lastExecutedTime = new Date();
     }
     if (executedQtd - order.executedQtd > 0) {
-      order.status = "pending";
+      order.status = "executed";
       await order.save();
       await handleExecutedOrder({
         order,
@@ -66,7 +76,7 @@ export async function handleFilledOrderResponse(response: any) {
       return;
     }
     order.binanceId = binanceId;
-    order.status = "pending";
+    order.status = "executed";
     order.executedQtd = executedQtd;
     order.lastExecutedTime = new Date();
     await order.save();

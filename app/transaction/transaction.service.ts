@@ -4,6 +4,7 @@ import { intervalList } from "../order/order.constants";
 import { OrderDoc } from "../order/order.type";
 import { getSpeed } from "../order/order.utils";
 import type { Document, Types } from "mongoose";
+import { OrderModel } from "models/order";
 
 export interface TransactionDoc extends Document {
   userId: Types.ObjectId;
@@ -44,7 +45,9 @@ export async function handleExecutedOrder({
 }: HandleExecutedOrderParams) {
   const bot = await BotModel.findById(order.botId);
   if (!bot) throw new Error(`Bot ${order.botId} not found`);
-
+  const orderExecuted = await OrderModel.findById(order._id.toString());
+  if (!orderExecuted)
+    throw new Error(`Order ${order._id.toString()} not found`);
   const promises = intervalList.map((interval) => {
     const multiplier = getSpeed({
       interval,
@@ -72,9 +75,10 @@ export async function handleExecutedOrder({
     (transaction) => transaction.status === "fulfilled"
   );
 
+  orderExecuted.status = "closed";
+  await orderExecuted.save();
+
   if (successTransaction) {
-    order.status = "closed";
-    await order.save();
     if (order.direction === "buy") {
       const multiplier = getSpeed({
         interval: undefined,
