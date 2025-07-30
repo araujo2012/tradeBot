@@ -164,13 +164,18 @@ async function calculateNormalOrder({
     let totalQuantity = 0;
     let result = 0;
     let sellPrice = 0;
+    let maxPrice = 0;
     for (const tx of buyTransactions) {
-      totalQuantity += tx.quantity - tx.executedQtd;
-      sellPrice = normalizeValue({
+      const profitPrice = normalizeValue({
         value: tx.price * minProfit,
         decimal: priceDecimal,
         isRoundUp: true,
       });
+      if (result > 10 && profitPrice > maxPrice) {
+        break;
+      }
+      totalQuantity += tx.quantity - tx.executedQtd;
+      sellPrice = profitPrice;
       result =
         sellPrice *
         normalizeValue({
@@ -178,7 +183,9 @@ async function calculateNormalOrder({
           decimal: qtdDecimal,
           isRoundUp: false,
         });
-      if (result > 10) break;
+      if (result > 10 && maxPrice === 0) {
+        maxPrice = sellPrice * 1.001;
+      }
     }
     if (result < 10) {
       sellOrder = null;
@@ -223,13 +230,18 @@ async function calculateNormalOrder({
     let totalQuantity = 0;
     let result = 0;
     let buyPrice = 0;
+    let minPrice = Infinity;
     for (const tx of sellTransactions) {
-      totalQuantity += tx.quantity - tx.executedQtd;
-      buyPrice = normalizeValue({
+      const profitPrice = normalizeValue({
         value: tx.price / minProfit,
         decimal: priceDecimal,
         isRoundUp: true,
       });
+      if (result > 10 && profitPrice < minPrice) {
+        break;
+      }
+      totalQuantity += tx.quantity - tx.executedQtd;
+      buyPrice = profitPrice;
       result =
         buyPrice *
         normalizeValue({
@@ -237,7 +249,9 @@ async function calculateNormalOrder({
           decimal: qtdDecimal,
           isRoundUp: false,
         });
-      if (result > 10) break;
+      if (result > 10 && minPrice === Infinity) {
+        minPrice = buyPrice / 1.001;
+      }
     }
     if (result < 10) {
       buyOrder = null;
