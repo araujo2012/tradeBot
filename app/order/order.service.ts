@@ -146,10 +146,10 @@ async function calculateNormalOrder({
   const minProfit = 1 + (1 + intervalData[interval].profit * bot.profit) * tax;
   let buyQuantity = sellTransactions
     .filter((tx) => tx.price > lowerLimit * minProfit)
-    .reduce((total, tx) => total + tx.quantity, 0);
+    .reduce((total, tx) => total + tx.quantity - tx.executedQtd, 0);
   let sellQuantity = buyTransactions
     .filter((tx) => tx.price < upperLimit / minProfit)
-    .reduce((total, tx) => total + tx.quantity, 0);
+    .reduce((total, tx) => total + tx.quantity - tx.executedQtd, 0);
   buyQuantity = normalizeValue({
     value: buyQuantity,
     decimal: qtdDecimal,
@@ -167,7 +167,7 @@ async function calculateNormalOrder({
     let result = 0;
     let sellPrice = 0;
     for (const tx of buyTransactions) {
-      totalQuantity += tx.quantity;
+      totalQuantity += tx.quantity - tx.executedQtd;
       sellPrice = normalizeValue({
         value: tx.price * minProfit,
         decimal: priceDecimal,
@@ -226,7 +226,7 @@ async function calculateNormalOrder({
     let result = 0;
     let buyPrice = 0;
     for (const tx of sellTransactions) {
-      totalQuantity += tx.quantity;
+      totalQuantity += tx.quantity - tx.executedQtd;
       buyPrice = normalizeValue({
         value: tx.price / minProfit,
         decimal: priceDecimal,
