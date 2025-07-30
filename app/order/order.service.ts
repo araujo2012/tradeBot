@@ -31,6 +31,16 @@ function calculateEntryOrder({
   lowerLimit: number;
   qtdDecimal: number;
 }) {
+  const minBuy = normalizeValue({
+    value: 10 / lowerLimit,
+    decimal: qtdDecimal,
+    isRoundUp: true,
+  });
+  const minSell = normalizeValue({
+    value: 10 / upperLimit,
+    decimal: qtdDecimal,
+    isRoundUp: true,
+  });
   const quantity =
     bot.crypto *
     (1 - bot.sellProtection / 100) *
@@ -49,70 +59,58 @@ function calculateEntryOrder({
       isNormal,
       isEntry,
     });
-
-  let buyMultiplier = Math.ceil(10 / value);
-  let sellMultiplier = Math.ceil(10 / (quantity * upperLimit));
-  const buyQuantity = normalizeValue({
-    value: (buyMultiplier * value) / lowerLimit,
-    decimal: qtdDecimal,
-    isRoundUp: false,
-  });
-  const sellQuantity = normalizeValue({
+  let buyMultiplier = Math.ceil(minBuy / (value / upperLimit));
+  let sellMultiplier = Math.ceil(minSell / quantity);
+  const realSell = normalizeValue({
     value: sellMultiplier * quantity,
     decimal: qtdDecimal,
     isRoundUp: false,
   });
-  if (buyQuantity * lowerLimit < 10) {
-    buyMultiplier += 1;
+  const realBuy = normalizeValue({
+    value: buyMultiplier * (value / lowerLimit),
+    decimal: qtdDecimal,
+    isRoundUp: false,
+  });
+  let sellOrder: OrderEntry | null;
+  if (realSell < bot.crypto) {
+    sellOrder = {
+      botId: String(bot._id),
+      sessionId: String(bot.sessionId),
+      userId: String(bot.userId),
+      direction: "sell",
+      interval,
+      type: "entry",
+      price: upperLimit,
+      value: realSell * upperLimit,
+      quantity: realSell,
+      symbol: bot.symbol,
+      period: bot.period + 20,
+      apiKey: "",
+      timeMultiplier: sellMultiplier,
+    };
+  } else {
+    sellOrder = null;
   }
-  if (sellQuantity * upperLimit < 10) {
-    sellMultiplier += 1;
+  let buyOrder: OrderEntry | null;
+  if (realBuy * lowerLimit < bot.brl) {
+    buyOrder = {
+      botId: String(bot._id),
+      sessionId: String(bot.sessionId),
+      userId: String(bot.userId),
+      direction: "buy",
+      interval,
+      type: "entry",
+      price: lowerLimit,
+      value: realBuy * lowerLimit,
+      quantity: realBuy,
+      symbol: bot.symbol,
+      period: bot.period + 20,
+      apiKey: "",
+      timeMultiplier: buyMultiplier,
+    };
+  } else {
+    buyOrder = null;
   }
-
-  const sellOrder: OrderEntry = {
-    botId: String(bot._id),
-    sessionId: String(bot.sessionId),
-    userId: String(bot.userId),
-    direction: "sell",
-    interval,
-    type: "entry",
-    price: upperLimit,
-    value: sellMultiplier * quantity * upperLimit,
-    quantity: normalizeValue({
-      value: sellMultiplier * quantity,
-      decimal: qtdDecimal,
-      isRoundUp: false,
-    }),
-    symbol: bot.symbol,
-    period: bot.period + 20,
-    apiKey: "",
-    timeMultiplier: sellMultiplier,
-  };
-
-  const buyOrder: OrderEntry = {
-    botId: String(bot._id),
-    sessionId: String(bot.sessionId),
-    userId: String(bot.userId),
-    direction: "buy",
-    interval,
-    type: "entry",
-    price: lowerLimit,
-    value:
-      normalizeValue({
-        value: (buyMultiplier * value) / lowerLimit,
-        decimal: qtdDecimal,
-        isRoundUp: false,
-      }) * lowerLimit,
-    quantity: normalizeValue({
-      value: (buyMultiplier * value) / lowerLimit,
-      decimal: qtdDecimal,
-      isRoundUp: false,
-    }),
-    symbol: bot.symbol,
-    period: bot.period + 20,
-    apiKey: "",
-    timeMultiplier: buyMultiplier,
-  };
 
   return [buyOrder, sellOrder];
 }
@@ -416,7 +414,7 @@ async function sendOrders({
   const isUpdateQuantity = order.quantity !== activeOrder.quantity;
   if (isUpdateQuantity) {
     console.log("isUpdateQuantity", order);
-    message.action = "cancelOrder";
+    message.action = "replaceOrder";
     logAndSendToQueue("socket", message);
     return;
   }

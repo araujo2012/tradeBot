@@ -94,6 +94,7 @@ export async function getKlines(
   try {
     const response = await axios.get(`${BASE_URL}klines`, {
       params: { symbol, interval, limit: FIXED_FETCH_LIMIT },
+      timeout: 10_000,
     });
 
     await redis.set(cacheKey, JSON.stringify(response.data), "EX", 60);
@@ -103,11 +104,10 @@ export async function getKlines(
       data: response.data.reverse().slice(0, limit),
     };
   } catch (error: any) {
+    console.log("getKlines: ", error);
     return {
       erro: true,
-      message: `Erro: ${error.response?.status}, ${JSON.stringify(
-        error.response?.data
-      )}`,
+      message: `Erro: ${JSON.stringify(error)}`,
     };
   }
 }
