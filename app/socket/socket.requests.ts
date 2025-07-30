@@ -4,9 +4,10 @@ import { readFileSync } from "fs";
 import path from "path";
 import { getBinanceSocket, initializeBinanceSocket } from "./socket.main";
 import { redis } from "../lib/redis";
-import { OrderEntry } from "app/order/order.type";
+import { OrderEntry } from "..//order/order.type";
 import { WebSocket } from "ws";
 import { WebsocketDataModel } from "../../models/websocketData";
+import { OrderModel } from "../../models/order";
 
 // Lê e prepara a chave privada Ed25519
 const PRIVATE_KEY_PATH = path.resolve(
@@ -84,6 +85,97 @@ export async function socketOrderPlace({
   const message = {
     id: clientId,
     method: "order.place",
+    params: params,
+  };
+
+  console.log(message);
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(
+        new Error("Timeout waiting for response from Binance (place order)")
+      );
+    }, 10000);
+
+    const handleMessage = (data: Buffer) => {
+      try {
+        const parsed = JSON.parse(data.toString());
+        if (parsed.id !== message.id) return;
+
+        clearTimeout(timeout);
+        socket.off("message", handleMessage);
+
+        resolve(parsed);
+      } catch {
+        // ignorar mensagens inválidas
+      }
+    };
+    WebsocketDataModel.create({
+      sessionId,
+      type: "sended",
+      payload: { message },
+    });
+    socket.on("message", handleMessage);
+    socket.send(JSON.stringify(message));
+  });
+}
+
+export async function socketOrderReplace({
+  order,
+  clientId,
+}: {
+  order: OrderEntry;
+  clientId: string;
+}): Promise<any> {
+  const { sessionId, apiKey } = order;
+  let socket = getBinanceSocket(sessionId);
+  if (!socket) {
+    await initializeBinanceSocket(sessionId);
+    socket = getBinanceSocket(sessionId);
+  }
+
+  if (!socket) {
+    throw new Error("Failed to initialize Binance socket");
+  }
+
+  const oldOrder = await OrderModel.findOne({
+    botId: order.botId,
+    symbol: order.symbol,
+    type: order.type,
+    direction: order.direction,
+    interval: order.interval,
+  });
+
+  if (!oldOrder) {
+    console.log("Nao foi possivel achar a ordem antiga: ", order);
+    throw new Error("Nao foi possivel achar a ordem antiga.");
+  }
+
+  // Obter offset do timestamp
+  const offset = await getOrSetOffset();
+  const timestamp = Date.now() - offset;
+
+  // Preparar os parâmetros da ordem
+  const params: any = {
+    apiKey,
+    cancelReplaceMode: "STOP_ON_FAILURE",
+    cancelOrigClientOrderId: oldOrder.binanceId,
+    price: order.price.toString(),
+    quantity: order.quantity.toString(),
+    side: order.direction === "buy" ? "BUY" : "SELL",
+    symbol: order.symbol,
+    timeInForce: "GTC",
+    timestamp: timestamp,
+    type: "LIMIT",
+  };
+
+  // Assinar os parâmetros
+  params.signature = signPayload(params);
+
+  // Criar a mensagem para o socket
+  const message = {
+    id: clientId,
+    method: "order.cancelReplace",
     params: params,
   };
 

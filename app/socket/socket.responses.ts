@@ -8,7 +8,9 @@ export async function handlePlaceOrderResponse(response: any) {
   const { id, result } = response;
   const { clientOrderId, status, executedQty, cummulativeQuoteQty } =
     result || {};
-  const order = await OrderModel.findOne({ clientId: id });
+  const order = await OrderModel.findOne({
+    $or: [{ clientId: id }, { binanceId: clientOrderId }],
+  });
 
   if (order) {
     order.binanceId = clientOrderId;
@@ -34,6 +36,42 @@ export async function handlePlaceOrderResponse(response: any) {
   return response;
 }
 
+export async function handleReplaceOrderResponse(response: any) {
+  const { newOrderResult, cancelResponse, newOrderResponse } = response;
+  const order: OrderDoc | null = await OrderModel.findOne({
+    binanceId: cancelResponse.origClientOrderId,
+  });
+  if (!order) {
+    return;
+  }
+  if (!newOrderResult) {
+    const { executedQtd, origQuoteOrderQty } = cancelResponse;
+    if (order.executedQtd > 0) {
+      order.executedQtd = executedQtd;
+      order.lastExecutedTime = new Date();
+    }
+    if (executedQtd - order.executedQtd > 0) {
+      order.status = "executed";
+      await order.save();
+      await handleExecutedOrder({
+        order,
+        executedQtd: Number(executedQtd) - order.executedQtd,
+        executedPrice: Number(origQuoteOrderQty) / Number(executedQtd),
+      });
+    } else {
+      order.status = "closed";
+      await order.save();
+    }
+    return;
+  }
+  const { price, origQty, clientOrderId } = newOrderResponse;
+  order.binanceId = clientOrderId;
+  order.status = "active";
+  order.price = Number(price);
+  order.quantity = Number(origQty);
+  await order.save();
+}
+
 //adicionar logica de ordens executadas
 export async function handleCancelOrderResponse(response: any) {
   try {
@@ -46,9 +84,9 @@ export async function handleCancelOrderResponse(response: any) {
     }
     if (order.executedQtd > 0) {
       order.executedQtd = executedQtd;
-      order.lastExecutedTime = new Date();
     }
     if (executedQtd - order.executedQtd > 0) {
+      order.lastExecutedTime = new Date();
       order.status = "executed";
       await order.save();
       await handleExecutedOrder({

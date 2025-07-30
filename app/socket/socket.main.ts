@@ -5,6 +5,7 @@ import {
   handleFilledOrderResponse,
   handlePartiallyFilledOrderResponse,
   handlePlaceOrderResponse,
+  handleReplaceOrderResponse,
 } from "./socket.responses";
 import { sessionService } from "../session/session.service";
 import { WebsocketDataModel } from "../../models/websocketData";
@@ -63,6 +64,11 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
           } else if (msg?.event?.X === "PARTIALLY_FILLED") {
             handlePartiallyFilledOrderResponse(msg.event);
           }
+        } else if (
+          msg?.result?.cancelResult === "SUCCESS" ||
+          msg?.result?.newOrderResult === "SUCCESS"
+        ) {
+          handleReplaceOrderResponse(msg.result);
         } else if (
           msg.id &&
           msg.result &&

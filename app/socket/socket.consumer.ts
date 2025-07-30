@@ -9,6 +9,7 @@ import {
   socketOrderPlace,
   socketOrderCancel,
   socketOrderStatus,
+  socketOrderReplace,
 } from "./socket.requests";
 import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
@@ -225,6 +226,18 @@ async function handleSyncOrder(payload: {
   }
 }
 
+async function handleReplaceOrder(order: OrderEntry) {
+  try {
+    const clientId = crypto.randomUUID();
+
+    const result = await socketOrderReplace({ order, clientId });
+    console.log({ result });
+  } catch (err) {
+    console.error("Error creating order:", err);
+    throw err;
+  }
+}
+
 async function processQueue() {
   if (processing || queue.length === 0) return;
   processing = true;
@@ -249,6 +262,9 @@ async function processQueue() {
         break;
       case "syncOrder":
         await handleSyncOrder(content.payload);
+        break;
+      case "replaceOrder":
+        await handleReplaceOrder(content.payload);
         break;
       default:
         console.warn("Unknown status:", content.status);
