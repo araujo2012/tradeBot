@@ -90,7 +90,6 @@ async function reconnectUserSocket(sessionId: string) {
   }
   session.status = "reconnecting";
   await session.save();
-  const channel = getRabbitChannel();
   const message = {
     action: "restartSession",
     sessionId: sessionId,

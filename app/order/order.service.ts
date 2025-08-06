@@ -544,3 +544,9 @@ export async function initializeMissingEntryOrders({
   }
   await Promise.all(promises);
 }
+
+export async function getActiveOrdersByUser(userId: string) {
+  return OrderModel.find({ userId, status: "active" }).select(
+    "symbol quantity price"
+  );
+}

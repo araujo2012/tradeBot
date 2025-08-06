@@ -7,6 +7,7 @@ import { OrderDoc } from "../order/order.type";
 
 export async function runBotJob(botId: string, apiKey: string) {
   const bot = await BotModel.findById(botId).lean();
+  console.log(bot?.name);
   const session = await SessionModel.findById(bot?.sessionId);
   const canBotRun =
     bot && session && bot.status === "active" && session.status === "active";

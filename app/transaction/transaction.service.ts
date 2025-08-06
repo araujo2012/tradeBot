@@ -2,6 +2,7 @@ import { TransactionModel } from "../../models/transaction";
 import { BotModel } from "../../models/bot";
 import { intervalList } from "../order/order.constants";
 import { OrderDoc } from "../order/order.type";
+import { ExecutedOrderModel } from "../../models/executedOrder";
 import { getSpeed } from "../order/order.utils";
 import type { Document, Types } from "mongoose";
 import { OrderModel } from "../../models/order";
@@ -77,6 +78,9 @@ export async function handleExecutedOrder({
 
   orderExecuted.status = "closed";
   await orderExecuted.save();
+  const orderData: any = orderExecuted.toObject();
+  delete orderData._id;
+  await ExecutedOrderModel.create(orderData);
 
   if (successTransaction) {
     if (order.direction === "buy") {
