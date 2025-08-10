@@ -1,6 +1,24 @@
 import { directionList, intervalList } from "../app/order/order.constants";
 import { Schema, model } from "mongoose";
 
+export interface ExecutedOrder {
+  userId: string;
+  botId: string;
+  sessionId: string;
+  symbol: string;
+  price: number;
+  quantity: number;
+  entryQtd: number;
+  value: number;
+  interval: string;
+  direction: string;
+  binanceId: string;
+  clientId: string;
+  executedQtd: number;
+  status: string;
+  executedTime: Date;
+}
+
 const executedOrderSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -9,13 +27,8 @@ const executedOrderSchema = new Schema(
     symbol: { type: String, required: true },
     price: { type: Number, default: 0 },
     quantity: { type: Number, default: 0 },
+    entryQtd: { type: Number, default: 0 },
     value: { type: Number, default: 0 },
-    type: {
-      type: String,
-      enum: ["entry", "normal"],
-      required: true,
-      default: "normal",
-    },
     interval: {
       type: String,
       enum: intervalList,
@@ -31,12 +44,11 @@ const executedOrderSchema = new Schema(
     executedQtd: { type: Number, default: 0 },
     status: {
       type: String,
-      enum: ["active", "executed", "closed", "pending"],
+      enum: ["NEW", "CREATED", "DONE"],
       required: true,
-      default: "closed",
+      default: "NEW",
     },
-    lastExecutedTime: { type: Date },
-    updateTime: { type: Date },
+    executedTime: { type: Date },
   },
   { timestamps: true }
 );
