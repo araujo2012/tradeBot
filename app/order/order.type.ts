@@ -32,6 +32,7 @@ export type OrderDoc = Document & {
   symbol: string;
   price: number;
   quantity: number;
+  entryQtd: number;
   value: number;
   type: "entry" | "normal";
   interval: string;

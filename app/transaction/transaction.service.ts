@@ -1,11 +1,12 @@
 import { TransactionModel } from "../../models/transaction";
-import { BotModel } from "../../models/bot";
+import { BotModel, BotDocument } from "../../models/bot";
 import { intervalList } from "../order/order.constants";
 import { OrderDoc } from "../order/order.type";
 import { ExecutedOrderModel } from "../../models/executedOrder";
 import { getSpeed } from "../order/order.utils";
 import type { Document, Types } from "mongoose";
 import { OrderModel } from "../../models/order";
+import { ExecutedOrder } from "models/executedOrder";
 
 export interface TransactionDoc extends Document {
   userId: Types.ObjectId;
@@ -49,6 +50,11 @@ export async function handleExecutedOrder({
   const orderExecuted = await OrderModel.findById(order._id.toString());
   if (!orderExecuted)
     throw new Error(`Order ${order._id.toString()} not found`);
+  orderExecuted.status = "closed";
+  await orderExecuted.save();
+  const orderData: any = orderExecuted.toObject();
+  delete orderData._id;
+  await ExecutedOrderModel.create(orderData);
   const promises = intervalList.map((interval) => {
     const multiplier = getSpeed({
       interval,
@@ -75,12 +81,6 @@ export async function handleExecutedOrder({
   const successTransaction = transactions.find(
     (transaction) => transaction.status === "fulfilled"
   );
-
-  orderExecuted.status = "closed";
-  await orderExecuted.save();
-  const orderData: any = orderExecuted.toObject();
-  delete orderData._id;
-  await ExecutedOrderModel.create(orderData);
 
   if (successTransaction) {
     if (order.direction === "buy") {
@@ -125,6 +125,43 @@ export async function handleExecutedOrder({
       "[TRANSACTION ERROR] - ",
       transactions.map((transaction: any) => transaction.reason)
     );
+  }
+}
+
+export async function createTransactions({
+  executedOrder,
+  bot,
+}: {
+  executedOrder: ExecutedOrder;
+  bot: BotDocument;
+}) {
+  try {
+    const promises = intervalList.map((interval) => {
+      const multiplier = getSpeed({
+        interval,
+        speed:
+          1 +
+          (executedOrder.direction === "buy" ? bot.buySpeed : bot.sellSpeed),
+        isNormal: true,
+        isEntry: false,
+      });
+      return TransactionModel.create({
+        userId: executedOrder.userId,
+        botId: executedOrder.botId,
+        sessionId: executedOrder.sessionId,
+        symbol: executedOrder.symbol,
+        interval,
+        fromInterval: executedOrder.interval,
+        price: executedOrder.price,
+        binanceId: executedOrder.binanceId,
+        value: multiplier * executedOrder.quantity * executedOrder.price,
+        quantity: multiplier * executedOrder.quantity,
+        direction: executedOrder.direction,
+      });
+    });
+    await Promise.all(promises);
+  } catch (error) {
+    console.log("[TRANSACTION ERROR] - ", error);
   }
 }
 

@@ -31,11 +31,6 @@ const transactionSchema = new Schema(
       enum: intervalList,
       required: true,
     },
-    type: {
-      type: String,
-      enum: ["entry", "normal"],
-      required: true,
-    },
     binanceId: { type: String, required: true },
   },
   { timestamps: true }

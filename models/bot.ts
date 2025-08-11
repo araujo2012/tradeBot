@@ -3,6 +3,31 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export interface BotDocument extends BotType {}
 
+export interface BotDoc {
+  name: string;
+  sessionId: string;
+  userId: string;
+  symbol: string;
+  status: string;
+  buyProtection: number;
+  sellProtection: number;
+  period: number;
+  width: number;
+  buySpeed: number;
+  sellSpeed: number;
+  limit: number;
+  brl: number;
+  crypto: number;
+  cryptoTarget: number;
+  profit: number;
+  createdAt: Date;
+  updatedAt: Date;
+  entryQtd: number;
+  executedQtd: number;
+  executedTime: Date;
+  updatedTime: Date;
+}
+
 const botSchema = new Schema<BotDocument>(
   {
     name: { type: String, required: true },

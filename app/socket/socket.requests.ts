@@ -8,6 +8,7 @@ import { OrderEntry } from "..//order/order.type";
 import { WebSocket } from "ws";
 import { WebsocketDataModel } from "../../models/websocketData";
 import { OrderModel } from "../../models/order";
+import { BinanceOrderResponse } from "../binance/binance.interface";
 
 // Lê e prepara a chave privada Ed25519
 const PRIVATE_KEY_PATH = path.resolve(
@@ -321,7 +322,7 @@ export async function socketOrderCancel({
   symbol: string;
   origClientOrderId: string;
   sessionId: string;
-}): Promise<any> {
+}): Promise<BinanceOrderResponse> {
   // Obter ou inicializar o socket da Binance
   let socket = getBinanceSocket(sessionId);
   if (!socket) {
@@ -393,7 +394,7 @@ export async function socketOrderStatus({
   origClientOrderId: string;
   symbol: string;
   sessionId: string;
-}): Promise<any> {
+}): Promise<BinanceOrderResponse> {
   let socket = getBinanceSocket(sessionId);
   if (!socket) {
     await initializeBinanceSocket(sessionId);
