@@ -41,6 +41,8 @@ export async function handleExecutedOrder({
         throw new Error("Order partially filled not canceled");
       }
       await handleTransactions({ result, order, bot });
+    } else if (result.status === OrderStatus.CANCELED) {
+      await handleTransactions({ result, order, bot });
     }
   } catch (error) {
     console.error(error);
@@ -77,32 +79,47 @@ async function syncBot({
   order,
   botId,
   executedQtd,
+  entryQtd,
 }: {
   order: ExecutedOrder;
   botId: string;
   executedQtd: number;
+  entryQtd: number;
 }) {
   const bot = await BotModel.findById(botId);
   if (!bot) throw new Error(`Bot ${botId} not found`);
   if (order.direction === "buy") {
-    const multiplier = getSpeed({
+    const entryMultiplier = getSpeed({
       interval: undefined,
       speed: 1 + bot.buySpeed,
       isNormal: true,
       isEntry: true,
     });
-    bot.crypto += multiplier * executedQtd;
-    bot.brl -= executedQtd * order.price;
+    const multiplier = getSpeed({
+      interval: undefined,
+      speed: 1 + bot.buySpeed,
+      isNormal: true,
+      isEntry: false,
+    });
+    bot.crypto += entryMultiplier * entryQtd + executedQtd * multiplier;
+    bot.brl -= entryQtd * order.price;
   }
   if (order.direction === "sell") {
-    const multiplier = getSpeed({
+    const entryMultiplier = getSpeed({
       interval: undefined,
       speed: 1 + bot.sellSpeed,
       isNormal: true,
       isEntry: true,
     });
-    bot.brl += multiplier * executedQtd * order.price;
-    bot.crypto -= executedQtd;
+    const multiplier = getSpeed({
+      interval: undefined,
+      speed: 1 + bot.sellSpeed,
+      isNormal: true,
+      isEntry: false,
+    });
+    bot.brl +=
+      (entryMultiplier * entryQtd + multiplier * executedQtd) * order.price;
+    bot.crypto -= entryQtd;
   }
   await bot.save();
 }
@@ -139,22 +156,26 @@ async function handleTransactions({
     executedTime: executedOrder.executedTime || new Date(),
   };
 
+  const entryQtd =
+    executedOrder.entryQtd > executedOrder.executedQtd
+      ? executedOrder.executedQtd
+      : executedOrder.entryQtd;
+  const executedQtd = executedOrder.executedQtd - entryQtd;
+
   await createTransactions({
     executedOrder: executedOrderData,
     bot,
+    entryQtd,
+    executedQtd,
   });
-  if (executedOrder.entryQtd > 0) {
-    const entryQtd =
-      executedOrder.entryQtd > executedOrder.executedQtd
-        ? executedOrder.executedQtd
-        : executedOrder.entryQtd;
-    await syncBot({
-      order: executedOrderData,
-      botId: order.botId.toString(),
-      executedQtd: entryQtd,
-    });
-    executedOrder.executedQtd -= entryQtd;
-  }
+
+  await syncBot({
+    order: executedOrderData,
+    botId: order.botId.toString(),
+    entryQtd,
+    executedQtd,
+  });
+  executedOrder.executedQtd -= entryQtd;
   if (executedOrder.executedQtd > 0) {
     const params = {
       userId: executedOrder.userId.toString(),

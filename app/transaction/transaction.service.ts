@@ -131,12 +131,24 @@ export async function handleExecutedOrder({
 export async function createTransactions({
   executedOrder,
   bot,
+  entryQtd,
+  executedQtd,
 }: {
   executedOrder: ExecutedOrder;
   bot: BotDocument;
+  entryQtd: number;
+  executedQtd: number;
 }) {
   try {
     const promises = intervalList.map((interval) => {
+      const entryMultiplier = getSpeed({
+        interval,
+        speed:
+          1 +
+          (executedOrder.direction === "buy" ? bot.buySpeed : bot.sellSpeed),
+        isNormal: true,
+        isEntry: true,
+      });
       const multiplier = getSpeed({
         interval,
         speed:
@@ -145,6 +157,7 @@ export async function createTransactions({
         isNormal: true,
         isEntry: false,
       });
+      const quantity = entryMultiplier * entryQtd + multiplier * executedQtd;
       return TransactionModel.create({
         userId: executedOrder.userId,
         botId: executedOrder.botId,
@@ -152,10 +165,10 @@ export async function createTransactions({
         symbol: executedOrder.symbol,
         interval,
         fromInterval: executedOrder.interval,
-        price: executedOrder.price,
         binanceId: executedOrder.binanceId,
-        value: multiplier * executedOrder.quantity * executedOrder.price,
-        quantity: multiplier * executedOrder.quantity,
+        price: executedOrder.price,
+        value: quantity * executedOrder.price,
+        quantity: quantity,
         direction: executedOrder.direction,
       });
     });

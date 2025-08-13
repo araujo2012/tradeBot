@@ -160,6 +160,7 @@ export async function socketOrderReplace({
   const params: any = {
     apiKey,
     cancelReplaceMode: "STOP_ON_FAILURE",
+    cancelRestrictions: "ONLY_NEW",
     cancelOrigClientOrderId: oldOrder.binanceId,
     price: order.price.toString(),
     quantity: order.quantity.toString(),

@@ -1,9 +1,7 @@
 import WebSocket from "ws";
 import {
-  handleCancelOrderResponse,
   handleErrors,
-  handleFilledOrderResponse,
-  handlePartiallyFilledOrderResponse,
+  handleExecutionReport,
   handlePlaceOrderResponse,
   handleReplaceOrderResponse,
 } from "./socket.responses";
@@ -57,12 +55,9 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
         if (msg.error) {
           handleErrors(msg);
         } else if (msg?.event?.e === "executionReport") {
-          if (msg?.event?.X === "CANCELED") {
-            handleCancelOrderResponse(msg.event);
-          } else if (msg?.event?.X === "FILLED") {
-            handleFilledOrderResponse(msg.event);
-          } else if (msg?.event?.X === "PARTIALLY_FILLED") {
-            handlePartiallyFilledOrderResponse(msg.event);
+          const { binanceId } = msg.event.c;
+          if (binanceId) {
+            handleExecutionReport(binanceId);
           }
         } else if (
           msg?.result?.cancelResult === "SUCCESS" ||

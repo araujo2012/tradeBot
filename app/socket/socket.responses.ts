@@ -16,17 +16,11 @@ export async function handlePlaceOrderResponse(response: any) {
     order.binanceId = clientOrderId;
     if (status === "NEW") {
       order.status = "active";
-      order.executedQtd = 0;
       await order.save();
-      console.log(`[Binance] Ordem criada: ${order}`);
     }
     if (status === "FILLED") {
       order.status = "executed";
-      order.executedQtd = Number(executedQty);
-      order.lastExecutedTime = new Date();
-      order.price = Number(cummulativeQuoteQty) / Number(executedQty);
       await order.save();
-      console.log(`[Binance] Ordem executada: ${order}`);
     }
   } else {
     console.warn(
@@ -37,39 +31,36 @@ export async function handlePlaceOrderResponse(response: any) {
 }
 
 export async function handleReplaceOrderResponse(response: any) {
-  const { newOrderResult, cancelResponse, newOrderResponse } = response;
+  const { newOrderResult, cancelResponse, newOrderResponse, cancelResult } =
+    response;
   const order: OrderDoc | null = await OrderModel.findOne({
     binanceId: cancelResponse.origClientOrderId,
   });
   if (!order) {
     return;
   }
-  if (!newOrderResult) {
-    const { executedQtd, origQuoteOrderQty } = cancelResponse;
-    if (order.executedQtd > 0) {
-      order.executedQtd = executedQtd;
-      order.lastExecutedTime = new Date();
-    }
-    if (executedQtd - order.executedQtd > 0) {
-      order.status = "executed";
-      await order.save();
-      await handleExecutedOrder({
-        order,
-        executedQtd: Number(executedQtd) - order.executedQtd,
-        executedPrice: Number(origQuoteOrderQty) / Number(executedQtd),
-      });
-    } else {
+  if (cancelResult === "FAILURE" || Number(cancelResponse.executedQty) > 0) {
+    order.status = "executed";
+    await order.save();
+  } else {
+    if (newOrderResult === "FAILURE") {
       order.status = "closed";
       await order.save();
+      return;
     }
-    return;
+    const { price, origQty, clientOrderId, executedQty, cummulativeQuoteQty } =
+      newOrderResponse;
+    order.binanceId = clientOrderId;
+    const isExecuted = Number(executedQty) > 0;
+    order.status = isExecuted ? "executed" : "active";
+    const executedPrice = isExecuted
+      ? Number(cummulativeQuoteQty) / Number(executedQty)
+      : Number(price);
+    order.price = executedPrice;
+    order.quantity = Number(origQty);
+    order.value = executedPrice * Number(origQty);
+    await order.save();
   }
-  const { price, origQty, clientOrderId } = newOrderResponse;
-  order.binanceId = clientOrderId;
-  order.status = "active";
-  order.price = Number(price);
-  order.quantity = Number(origQty);
-  await order.save();
 }
 
 //adicionar logica de ordens executadas
@@ -151,6 +142,17 @@ export async function handlePartiallyFilledOrderResponse(response: any) {
     logAndSendToQueue("socket", message);
   } catch (error) {
     console.log("handleCancelOrderResponse - ", error);
+  }
+}
+
+export async function handleExecutionReport(binanceId: string) {
+  const order: OrderDoc | null = await OrderModel.findOne({ binanceId });
+  if (!order) {
+    return;
+  }
+  if (order.status === "active") {
+    order.status = "executed";
+    await order.save();
   }
 }
 
