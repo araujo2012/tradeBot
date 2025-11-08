@@ -1,6 +1,6 @@
 import { SessionModel } from "../../models/session";
 import { BotDocument, BotModel } from "../../models/bot";
-import { setEntryOrders, setNormalOrders } from "../order/order.service";
+import { setOrders } from "../order/order.service";
 import { OrderModel } from "../../models/order";
 import { OrderDoc } from "../order/order.type";
 import { handleExecutedOrder } from "app/executedOrder/executedOrder.service";
@@ -19,8 +19,7 @@ export async function runBotJob(botId: string, apiKey: string) {
     if (orders.length > 0) {
       await handleExecutedOrders(orders, apiKey, bot);
     } else {
-      setEntryOrders(bot, apiKey);
-      setNormalOrders(bot, apiKey);
+      setOrders(bot, apiKey);
     }
   }
 }

@@ -7,9 +7,10 @@ export interface OrderEntry {
   userId: string;
   direction: "buy" | "sell";
   interval: IntervalType;
-  type: "entry" | "normal";
   price: number;
   quantity: number;
+  entryQtd: number;
+  maxEntry: number;
   symbol: string;
   value: number;
   period: number;
@@ -46,3 +47,13 @@ export type OrderDoc = Document & {
   lastExecutedTime?: Date;
   updateTime?: Date;
 };
+
+export interface ActiveOrder {
+  _id: any;
+  interval: IntervalType;
+  direction: string;
+  price: number;
+  quantity: number;
+  lastExecutedTime: Date;
+  status: string;
+}

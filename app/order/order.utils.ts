@@ -61,7 +61,7 @@ export function minutesSince({
   period,
   interval,
 }: {
-  date: Date;
+  date: Date | undefined;
   period: number;
   interval: number;
 }): number {
@@ -104,4 +104,71 @@ export function getLastExecutedTimeFromInterval(
 
   const offset = period * (mapping[interval] ?? 0);
   return new Date(now - offset);
+}
+
+export function calculateWeightedPriceStats(
+  transactions: Array<{ price: number; quantity: number }>
+) {
+  if (transactions.length === 0) {
+    return { weightedAverage: 0, weightedStdDev: 0, totalQuantity: 0 };
+  }
+  const totalWeight = transactions.reduce(
+    (sum, transaction) => sum + transaction.quantity,
+    0
+  );
+  if (totalWeight === 0) {
+    return { weightedAverage: 0, weightedStdDev: 0, totalQuantity: 0 };
+  }
+  const weightedSum = transactions.reduce(
+    (sum, transaction) => sum + transaction.price * transaction.quantity,
+    0
+  );
+  const weightedAverage = weightedSum / totalWeight;
+  const weightedVariance =
+    transactions.reduce((sum, transaction) => {
+      const deviation = transaction.price - weightedAverage;
+      return sum + deviation * deviation * transaction.quantity;
+    }, 0) / totalWeight;
+
+  const weightedStdDev = Math.sqrt(weightedVariance);
+
+  return {
+    weightedAverage: Number(weightedAverage.toFixed(6)),
+    weightedStdDev: Number(weightedStdDev.toFixed(6)),
+    totalQuantity: totalWeight,
+  };
+}
+
+export function probabilityOfZ({
+  mean,
+  stdDev,
+  z,
+  direction,
+}: {
+  mean: number;
+  stdDev: number;
+  z: number;
+  direction: "buy" | "sell";
+}): number {
+  if (stdDev <= 0) {
+    return 0.5;
+  }
+  const standardizedZ = (z - mean) / stdDev;
+  const cdf = 0.5 * (1 + erf(standardizedZ / Math.SQRT2));
+  return direction === "buy" ? 1 - cdf : cdf;
+}
+
+function erf(x: number): number {
+  const a1 = 0.254829592;
+  const a2 = -0.284496736;
+  const a3 = 1.421413741;
+  const a4 = -1.453152027;
+  const a5 = 1.061405429;
+  const p = 0.3275911;
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x);
+  const t = 1 / (1 + p * x);
+  const y =
+    1 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+  return sign * y;
 }

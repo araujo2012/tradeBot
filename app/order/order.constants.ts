@@ -18,3 +18,4 @@ export const intervalData = {
 };
 export const directionList = ["buy", "sell"];
 export const tax = 0.002;
+export const orderRange = 1.002;

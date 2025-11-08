@@ -10,12 +10,6 @@ const orderSchema = new Schema(
     price: { type: Number, default: 0 },
     quantity: { type: Number, default: 0 },
     value: { type: Number, default: 0 },
-    type: {
-      type: String,
-      enum: ["entry", "normal"],
-      required: true,
-      default: "normal",
-    },
     interval: {
       type: String,
       enum: intervalList,
@@ -26,6 +20,8 @@ const orderSchema = new Schema(
       enum: directionList,
       required: true,
     },
+    entryQtd: { type: Number, default: 0 },
+    maxEntry: { type: Number, default: 0 },
     binanceId: { type: String, default: "" },
     clientId: { type: String, default: "" },
     executedQtd: { type: Number, default: 0 },
