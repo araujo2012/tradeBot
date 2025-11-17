@@ -18,6 +18,7 @@ export async function getSessions(req: Request, res: Response) {
         session.limit -= total;
       }
     });
+    await Promise.all(promises);
     res.json(sessions);
   } catch (error) {
     console.error("Error getting sessions:", error);
