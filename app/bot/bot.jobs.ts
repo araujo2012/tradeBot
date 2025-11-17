@@ -3,7 +3,7 @@ import { BotDocument, BotModel } from "../../models/bot";
 import { setOrders } from "../order/order.service";
 import { OrderModel } from "../../models/order";
 import { OrderDoc } from "../order/order.type";
-import { handleExecutedOrder } from "app/executedOrder/executedOrder.service";
+import { handleExecutedOrder } from "../executedOrder/executedOrder.service";
 
 export async function runBotJob(botId: string, apiKey: string) {
   const bot = await BotModel.findById(botId).lean();

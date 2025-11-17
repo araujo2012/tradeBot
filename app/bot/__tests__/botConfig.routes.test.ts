@@ -1,6 +1,6 @@
 import request from "supertest";
 import app from "../../../app";
-import { BotConfig } from "../../../models/botConfig";
+import { BotConfigModel } from "../../../models/botConfig";
 import { connectToDatabase } from "../../lib/database";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
@@ -22,12 +22,12 @@ describe("BotConfig Routes", () => {
   });
 
   afterAll(async () => {
-    await BotConfig.deleteMany({});
+    await BotConfigModel.deleteMany({});
     await mongoose.disconnect();
   });
 
   beforeEach(async () => {
-    await BotConfig.deleteMany({});
+    await BotConfigModel.deleteMany({});
   });
 
   describe("GET /bot/config/default", () => {
@@ -50,12 +50,12 @@ describe("BotConfig Routes", () => {
 
     it("should return default config when it exists", async () => {
       // Create a test config
-      const testConfig = new BotConfig({
+      const testConfig = new BotConfigModel({
         userId: testUserId,
         buyProtection: 50,
         sellProtection: 30,
-        periodo: 5,
-        largura: 3,
+        period: 5,
+        width: 3,
         name: "Default Config",
       });
       await testConfig.save();
@@ -72,13 +72,13 @@ describe("BotConfig Routes", () => {
         sellProtection: 30,
         name: "Default Config",
       });
-      // Check that periodo and largura are random values within expected ranges
-      expect(response.body.data.periodo).toBeGreaterThanOrEqual(0);
-      expect(response.body.data.periodo).toBeLessThanOrEqual(10);
-      expect(Number.isInteger(response.body.data.periodo)).toBe(true);
-      expect(response.body.data.largura).toBeGreaterThanOrEqual(0);
-      expect(response.body.data.largura).toBeLessThanOrEqual(10);
-      expect(typeof response.body.data.largura).toBe("number");
+      // Check that period and width are random values within expected ranges
+      expect(response.body.data.period).toBeGreaterThanOrEqual(0);
+      expect(response.body.data.period).toBeLessThanOrEqual(10);
+      expect(Number.isInteger(response.body.data.period)).toBe(true);
+      expect(response.body.data.width).toBeGreaterThanOrEqual(0);
+      expect(response.body.data.width).toBeLessThanOrEqual(10);
+      expect(typeof response.body.data.width).toBe("number");
     });
 
     it("should return 401 when token is invalid", async () => {

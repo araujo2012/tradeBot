@@ -16,6 +16,7 @@ export interface OrderEntry {
   period: number;
   apiKey: string;
   timeMultiplier?: number;
+  type?: "entry" | "normal";
 }
 
 export interface CalculateEntryOrderParams {

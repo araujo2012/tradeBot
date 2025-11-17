@@ -6,7 +6,7 @@ import { ExecutedOrderModel } from "../../models/executedOrder";
 import { getSpeed } from "../order/order.utils";
 import type { Document, Types } from "mongoose";
 import { OrderModel } from "../../models/order";
-import { ExecutedOrder } from "models/executedOrder";
+import { ExecutedOrder } from "../../models/executedOrder";
 
 export interface TransactionDoc extends Document {
   userId: Types.ObjectId;

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { sessionService } from "./session.service";
+import { botService } from "../bot/bot.service";
 
 export async function getSessions(req: Request, res: Response) {
   try {
@@ -8,6 +9,15 @@ export async function getSessions(req: Request, res: Response) {
       return res.status(401).json({ error: "User not authenticated" });
     }
     const sessions = await sessionService.getSessions(userId);
+    const promises = sessions.map(async (session) => {
+      const total = await botService.getTotalLimitBySession({
+        userId,
+        sessionId: session._id.toString(),
+      });
+      if (session.limit) {
+        session.limit -= total;
+      }
+    });
     res.json(sessions);
   } catch (error) {
     console.error("Error getting sessions:", error);

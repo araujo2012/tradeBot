@@ -1,16 +1,16 @@
-import { ExecutedOrder, ExecutedOrderModel } from "models/executedOrder";
-import { OrderDoc } from "app/order/order.type";
+import { ExecutedOrder, ExecutedOrderModel } from "../../models/executedOrder";
+import { OrderDoc } from "../order/order.type";
 import {
   socketOrderCancel,
   socketOrderStatus,
-} from "app/socket/socket.requests";
-import { OrderResult, OrderStatus } from "@binance/binance.interface";
-import { BotDoc, BotDocument, BotModel } from "models/bot";
+} from "../socket/socket.requests";
+import { OrderResult, OrderStatus } from "../binance/binance.interface";
+import { BotDoc, BotDocument, BotModel } from "../../models/bot";
 import {
   createTransactions,
   updateTransactionsByExecutedQtd,
-} from "app/transaction/transaction.service";
-import { getSpeed } from "app/order/order.utils";
+} from "../transaction/transaction.service";
+import { getSpeed } from "../order/order.utils";
 
 export async function handleExecutedOrder({
   order,

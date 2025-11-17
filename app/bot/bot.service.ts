@@ -9,6 +9,18 @@ async function getBotsByUser(userId: string) {
   return await BotModel.find({ userId });
 }
 
+async function getTotalLimitBySession({
+  userId,
+  sessionId,
+}: {
+  userId: string;
+  sessionId: string;
+}) {
+  const bots = await BotModel.find({ userId, sessionId });
+  const total = bots.reduce((acc, bot) => acc + (bot.limit ?? 0), 0);
+  return total;
+}
+
 async function createBot(userId: string, botData: any) {
   return await BotModel.create({ ...botData, userId });
 }
@@ -93,4 +105,5 @@ export const botService = {
   startBot,
   stopBot,
   archiveBot,
+  getTotalLimitBySession,
 };
