@@ -1,7 +1,6 @@
 import type mongoose from "mongoose";
 
 export interface BotType {
-  _id: string | mongoose.Types.ObjectId;
   name: string;
   sessionId: string | mongoose.Types.ObjectId;
   userId: string | mongoose.Types.ObjectId;
@@ -11,6 +10,7 @@ export interface BotType {
   mode: "administrator";
   brl: number;
   crypto: number;
+  target: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

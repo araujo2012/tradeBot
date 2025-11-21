@@ -14,7 +14,6 @@ export async function bootstrap() {
       };
       logAndSendToQueue("socket", message);
     }
-
     console.log("Bootstrap finalizado.");
   } catch (err) {
     console.error("Erro no bootstrap:", err);

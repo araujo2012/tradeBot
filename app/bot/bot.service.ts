@@ -1,4 +1,4 @@
-import { BotModel } from "../../models/bot";
+import { BotDocument, BotModel } from "../../models/bot";
 import { SessionModel } from "../../models/session";
 import { OrderModel } from "../../models/order";
 import { getRabbitChannel, logAndSendToQueue } from "../lib/rabbit";
@@ -34,52 +34,25 @@ async function updateBot(botId: string, userId: string, updateData: any) {
 async function startBot(botId: string) {
   const bot = await BotModel.findById(botId);
   if (!bot) throw new Error("Bot not found");
-  const session = await SessionModel.findOne({
-    _id: bot.sessionId,
-    userId: bot.userId,
-    status: "active",
-  });
-  if (!session) throw new Error("Session for this bot is not active");
-  const orders = await OrderModel.find({
-    botId,
-  });
-  await initializeMissingEntryOrders({
-    botId,
-    userId: bot.userId.toString(),
-    sessionId: bot.sessionId.toString(),
-    symbol: bot.symbol,
-    orders,
-    period: 20 + bot.period,
-  });
-  const activeOrders = orders.filter((order) =>
-    ["active", "pending"].includes(order.status)
-  );
-  const syncOrders = activeOrders
-    .filter((order) => order.binanceId !== "")
-    .map(async (order) => {
-      order.status = "pending";
-      await order.save();
+  switch (bot.mode) {
+    case "administrator":
+      await startAdministrator(bot);
+      break;
+    default:
+      break;
+  }
+}
 
-      const message = {
-        action: "syncOrder",
-        payload: {
-          apiKey: session.apiKey,
-          origClientOrderId: order.binanceId,
-          symbol: order.symbol,
-          sessionId: session._id.toString(),
-        },
-      };
-      logAndSendToQueue("socket", message);
-
-      return 1;
+async function startAdministrator(bot: BotDocument) {
+  try {
+    const orders = await OrderModel.find({
+      botId: bot._id,
+      status: { $in: ["active", "executed"] },
     });
-
-  const results = await Promise.all(syncOrders);
-  const cancelSended = results.reduce((acc, val) => acc + val, 0);
-  bot.status = cancelSended > 0 ? "pending" : "active";
-  await bot.save();
-  startBotJob(botId, session.apiKey);
-  return bot;
+    console.log(orders);
+  } catch (error) {
+    console.log("[startAdministrator] - ", error);
+  }
 }
 
 async function stopBot(botId: string, userId: string) {

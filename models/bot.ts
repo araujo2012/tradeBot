@@ -1,7 +1,7 @@
 import { BotType } from "app/bot/bot.type";
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Schema, HydratedDocument } from "mongoose";
 
-export interface BotDocument extends BotType {}
+export type BotDocument = HydratedDocument<BotType>;
 
 export interface BotDoc {
   name: string;
@@ -40,6 +40,11 @@ const botSchema = new Schema<BotDocument>(
       type: String,
       enum: ["administrator"],
       required: true,
+    },
+    target: {
+      type: Number,
+      required: true,
+      default: 0,
     },
     brl: {
       type: Number,
