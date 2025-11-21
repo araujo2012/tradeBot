@@ -52,31 +52,7 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
           type: "received",
           payload: msg,
         });
-        if (msg.error) {
-          handleErrors(msg);
-        } else if (msg?.event?.e === "executionReport") {
-          const { binanceId } = msg.event.c;
-          if (binanceId) {
-            handleExecutionReport(binanceId);
-          }
-        } else if (
-          msg?.result?.cancelResult === "SUCCESS" ||
-          msg?.result?.newOrderResult === "SUCCESS"
-        ) {
-          handleReplaceOrderResponse(msg.result);
-        } else if (
-          msg.id &&
-          msg.result &&
-          typeof msg.result === "object" &&
-          "orderId" in msg.result &&
-          "symbol" in msg.result
-        ) {
-          handlePlaceOrderResponse(msg);
-        } else if (msg?.event?.e === "outboundAccountPosition") {
-          console.log("outboundAccountPosition - ", msg?.event.B);
-        } else {
-          console.log(`📩 (${sessionId}) [OUTRO EVENTO]`, msg);
-        }
+        console.log(data.toString());
       } catch (err) {
         console.log(`📩 (${sessionId}) [ERRO PARSE]`, data.toString());
       }

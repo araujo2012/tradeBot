@@ -9,22 +9,10 @@ export interface BotDoc {
   userId: string;
   symbol: string;
   status: string;
-  buyProtection: number;
-  sellProtection: number;
-  period: number;
-  width: number;
-  buySpeed: number;
-  sellSpeed: number;
+  mode: string;
   limit: number;
   brl: number;
   crypto: number;
-  cryptoTarget: number;
-  profit: number;
-  createdAt: Date;
-  updatedAt: Date;
-  entryQtd: number;
-  executedQtd: number;
-  executedTime: Date;
   updatedTime: Date;
 }
 
@@ -43,52 +31,15 @@ const botSchema = new Schema<BotDocument>(
       enum: ["active", "inactive", "archive", "pending", "error"],
       default: "inactive",
     },
-    buyProtection: {
-      type: Number,
-      required: true,
-      min: 0,
-      max: 100,
-      default: 35,
-    },
-    sellProtection: {
-      type: Number,
-      required: true,
-      min: 0,
-      max: 100,
-      default: 35,
-    },
-    period: {
-      type: Number,
-      required: true,
-      min: 0,
-      max: 10,
-      default: 1,
-    },
-    width: {
-      type: Number,
-      required: true,
-      min: 0,
-      max: 10,
-      default: 5,
-    },
-    buySpeed: {
-      type: Number,
-      required: true,
-      min: 0,
-      max: 1,
-      default: 0.618,
-    },
-    sellSpeed: {
-      type: Number,
-      required: true,
-      min: 0,
-      max: 1,
-      default: 0.618,
-    },
     limit: {
       type: Number,
       required: true,
       default: 0,
+    },
+    mode: {
+      type: String,
+      enum: ["administrator"],
+      required: true,
     },
     brl: {
       type: Number,
@@ -100,12 +51,6 @@ const botSchema = new Schema<BotDocument>(
       required: true,
       default: 0,
     },
-    cryptoTarget: {
-      type: Number,
-      required: true,
-      default: 0,
-    },
-    profit: { type: Number, required: true, default: 1 },
   },
   { timestamps: true }
 );

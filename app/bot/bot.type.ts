@@ -7,17 +7,10 @@ export interface BotType {
   userId: string | mongoose.Types.ObjectId;
   symbol: "BTCBRL" | "ETHBRL" | "USDTBRL" | "BNBBRL" | "SOLBRL" | "XRPBRL";
   status: "active" | "inactive" | "archive" | "pending" | "error";
-  buySpeed: number;
-  sellSpeed: number;
-  buyProtection: number;
-  sellProtection: number;
-  period: number;
-  width: number;
   limit: number;
+  mode: "administrator";
   brl: number;
   crypto: number;
-  cryptoTarget: number;
-  profit: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
