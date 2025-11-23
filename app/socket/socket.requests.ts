@@ -58,16 +58,11 @@ export async function socketOrderPlace({
     await initializeBinanceSocket(sessionId);
     socket = getBinanceSocket(sessionId);
   }
-
   if (!socket) {
     throw new Error("Failed to initialize Binance socket");
   }
-
-  // Obter offset do timestamp
   const offset = await getOrSetOffset();
   const timestamp = Date.now() - offset;
-
-  // Preparar os parâmetros da ordem
   const params: any = {
     apiKey,
     price: order.price.toString(),
@@ -78,19 +73,13 @@ export async function socketOrderPlace({
     timestamp: timestamp,
     type: "LIMIT",
   };
-
-  // Assinar os parâmetros
   params.signature = signPayload(params);
-
-  // Criar a mensagem para o socket
   const message = {
     id: clientId,
     method: "order.place",
     params: params,
   };
-
   console.log(message);
-
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(

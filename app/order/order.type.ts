@@ -5,15 +5,13 @@ export interface OrderEntry {
   botId: string;
   sessionId: string;
   userId: string;
+  mode: "administrator";
   direction: "buy" | "sell";
   interval: IntervalType;
   price: number;
   quantity: number;
-  entryQtd: number;
-  maxEntry: number;
   symbol: string;
   value: number;
-  period: number;
   apiKey: string;
   timeMultiplier?: number;
   type?: "entry" | "normal";

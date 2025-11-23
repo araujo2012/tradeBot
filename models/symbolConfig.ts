@@ -1,9 +1,9 @@
 import { Schema, model } from "mongoose";
 
 const symbolConfigSchema = new Schema({
-  symbol: String,
-  priceDecimal: Number,
-  qtdDecimal: Number,
+  symbol: { type: String, required: true },
+  priceDecimal: { type: Number, required: true },
+  qtdDecimal: { type: Number, required: true },
 });
 
 export const SymbolConfigModel = model("SymbolConfig", symbolConfigSchema);

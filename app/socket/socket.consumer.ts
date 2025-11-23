@@ -3,6 +3,7 @@ import { SessionModel } from "../../models/session";
 import { OrderModel } from "../../models/order";
 import { BotModel } from "../../models/bot";
 import { botService } from "../bot/bot.service";
+import { SymbolConfigModel } from "../../models/symbolConfig";
 import {
   socketLogon,
   socketUserStream,
@@ -15,6 +16,7 @@ import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
 import { OrderDoc, OrderEntry } from "../order/order.type";
 import { handleExecutedOrder } from "../transaction/transaction.service";
+import { normalizeValue } from "../order/order.utils";
 
 // Rate limit: 5 mensagens por segundo
 const RATE_LIMIT = 5;
@@ -51,7 +53,7 @@ async function handleStartSession(sessionId: string) {
 
     const bots = await BotModel.find({ sessionId, status: "active" });
     for (const bot of bots) {
-      botService.startBot(bot._id.toString());
+      botService.startBot(bot._id.toString(), apiKey);
     }
   } catch (err) {
     sendToUser(userId.toString(), {
@@ -86,10 +88,23 @@ async function handleStopSession(sessionId: string, userId: string) {
   }
 }
 
-async function handleCreateOrder(order: OrderEntry) {
+async function handleCreateOrder(order: OrderEntry, apiKey: string) {
   try {
+    const symbolConfig = await SymbolConfigModel.findOne({
+      symbol: order.symbol,
+    });
+    if (!symbolConfig) throw new Error(`${order.symbol} nao existe`);
+    order.quantity = normalizeValue({
+      value: order.quantity,
+      isRoundUp: order.mode !== "administrator",
+      decimal: symbolConfig.qtdDecimal,
+    });
+    order.price = normalizeValue({
+      value: order.price,
+      isRoundUp: order.direction === "sell",
+      decimal: symbolConfig.priceDecimal,
+    });
     const clientId = crypto.randomUUID();
-    const { botId, type, interval, direction } = order;
     const orderData = {
       ...order,
       binanceId: "",
@@ -98,26 +113,16 @@ async function handleCreateOrder(order: OrderEntry) {
       executedQtd: 0,
     };
 
-    const savedOrder = await OrderModel.findOneAndUpdate(
-      {
-        botId,
-        type,
-        interval,
-        direction,
-      },
-      orderData,
-      {
-        new: true,
-        upsert: true,
-        setDefaultsOnInsert: true,
-      }
-    );
+    const savedOrder = await OrderModel.create(orderData);
 
     console.log(
       `Order ${savedOrder ? "updated" : "created"}: ${savedOrder?._id}`
     );
 
-    const result = await socketOrderPlace({ order, clientId });
+    const result = await socketOrderPlace({
+      order: { ...order, apiKey },
+      clientId,
+    });
     console.log({ result });
   } catch (err) {
     console.error("Error creating order:", err);
@@ -151,7 +156,7 @@ async function handleRestartSession(sessionId: string): Promise<void> {
     status: { $in: ["active", "pending"] },
   });
   for (const bot of bots) {
-    botService.startBot(bot._id.toString());
+    botService.startBot(bot._id.toString(), apiKey);
   }
 }
 
@@ -251,20 +256,11 @@ async function processQueue() {
       case "stopSession":
         await handleStopSession(content.sessionId, content.userId);
         break;
-      case "createOrder":
-        await handleCreateOrder(content.payload);
-        break;
-      case "cancelOrder":
-        await handleCancelOrder(content.payload);
-        break;
       case "restartSession":
         handleRestartSession(content.sessionId);
         break;
-      case "syncOrder":
-        await handleSyncOrder(content.payload);
-        break;
-      case "replaceOrder":
-        await handleReplaceOrder(content.payload);
+      case "createOrder":
+        await handleCreateOrder(content.payload, content.apiKey);
         break;
       default:
         console.warn("Unknown status:", content.status);
