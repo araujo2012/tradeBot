@@ -119,11 +119,22 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
       `Order ${savedOrder ? "updated" : "created"}: ${savedOrder?._id}`
     );
 
-    const result = await socketOrderPlace({
+    const { status, result } = await socketOrderPlace({
       order: { ...order, apiKey },
       clientId,
     });
-    console.log({ result });
+
+    if (status !== 200) {
+      console.log("status !== 200: ", result);
+    }
+
+    if (result?.status === "NEW") {
+      savedOrder.status = "active";
+      savedOrder.binanceId = result.clientOrderId || "";
+      await savedOrder.save();
+    } else {
+      console.log('result?.status !== "NEW": ', result);
+    }
   } catch (err) {
     console.error("Error creating order:", err);
     throw err;

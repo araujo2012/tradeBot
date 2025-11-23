@@ -79,7 +79,6 @@ export async function socketOrderPlace({
     method: "order.place",
     params: params,
   };
-  console.log(message);
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(

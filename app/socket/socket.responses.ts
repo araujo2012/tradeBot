@@ -14,7 +14,8 @@ export async function handlePlaceOrderResponse(response: any) {
 
   if (order) {
     order.binanceId = clientOrderId;
-    if (status === "NEW") {
+    if (status === "NEW" && order.status === "pending") {
+      order.binanceId = clientOrderId;
       order.status = "active";
       await order.save();
     }

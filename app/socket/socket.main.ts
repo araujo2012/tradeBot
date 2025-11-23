@@ -52,7 +52,11 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
           type: "received",
           payload: msg,
         });
-        console.log(data.toString());
+        if (msg?.id && msg?.status === 200 && msg?.result?.status === "NEW") {
+          handlePlaceOrderResponse(msg);
+        } else {
+          console.log("socket", msg);
+        }
       } catch (err) {
         console.log(`📩 (${sessionId}) [ERRO PARSE]`, data.toString());
       }
