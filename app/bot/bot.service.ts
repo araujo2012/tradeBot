@@ -66,6 +66,7 @@ async function startAdministrator(bot: BotDocument, apiKey: string) {
       }
       await order.save();
     });
+    startBotJob(bot._id.toString(), apiKey);
   } catch (error) {
     bot.status = "error";
     bot.save();

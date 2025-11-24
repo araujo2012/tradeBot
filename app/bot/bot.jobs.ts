@@ -8,20 +8,6 @@ import { handleExecutedOrder } from "../executedOrder/executedOrder.service";
 export async function runBotJob(botId: string, apiKey: string) {
   const bot = await BotModel.findById(botId).lean();
   console.log(bot?.name);
-  const session = await SessionModel.findById(bot?.sessionId);
-  const canBotRun =
-    bot && session && bot.status === "active" && session.status === "active";
-  if (canBotRun) {
-    const orders = (await OrderModel.find({
-      botId: botId,
-      status: "executed",
-    })) as OrderDoc[];
-    if (orders.length > 0) {
-      await handleExecutedOrders(orders, apiKey, bot);
-    } else {
-      setOrders(bot, apiKey);
-    }
-  }
 }
 
 const botIntervals: Record<string, NodeJS.Timeout> = {};
