@@ -53,7 +53,13 @@ async function handleStartSession(sessionId: string) {
 
     const bots = await BotModel.find({ sessionId, status: "active" });
     for (const bot of bots) {
-      botService.startBot(bot._id.toString(), apiKey);
+      switch (bot.mode) {
+        case "administrator":
+          await botService.startAdministrator(bot, apiKey);
+          break;
+        default:
+          break;
+      }
     }
   } catch (err) {
     sendToUser(userId.toString(), {
@@ -179,73 +185,11 @@ async function handleSyncOrder(payload: {
 }): Promise<void> {
   const { origClientOrderId } = payload;
   const response = await socketOrderStatus(payload);
-  const orderData = response?.result;
-  if (!orderData || !orderData.clientOrderId) {
-    const pendingOrder = await OrderModel.findOne({
-      binanceId: origClientOrderId,
-    });
-    if (!pendingOrder) {
-      throw new Error(`Invalid origClientOrderId: ${origClientOrderId}`);
-    }
-    pendingOrder.status = "closed";
-    pendingOrder.save();
-    throw new Error("Invalid response from Binance");
-  }
-  const {
-    clientOrderId,
-    executedQty,
-    updateTime,
-    cummulativeQuoteQty,
-    status,
-  } = orderData;
-  const order = (await OrderModel.findOne({
-    binanceId: { $in: [clientOrderId, origClientOrderId] },
-  })) as OrderDoc | null;
-  if (!order) {
-    throw new Error(`Could not find order: ${origClientOrderId}`);
-  }
-  if (clientOrderId !== origClientOrderId) {
-    throw new Error(
-      `Could not find order: ${origClientOrderId} ou ${clientOrderId}`
-    );
-  }
-  order.status =
-    Number(executedQty) > 0
-      ? "pending"
-      : status === "CANCELED"
-      ? "closed"
-      : "active";
-  if (Number(executedQty) > 0) {
-    const date = new Date(updateTime);
-    order.updateTime = date;
-    order.lastExecutedTime = date;
-  }
-  await order.save();
-  if (order.executedQtd < Number(executedQty)) {
-    await handleExecutedOrder({
-      order,
-      executedQtd: Number(executedQty) - order.executedQtd,
-      executedPrice: Number(cummulativeQuoteQty) / Number(executedQty),
-    });
-  }
-  const activeOrders = await OrderModel.find({
-    botId: order.botId,
-    status: "pending",
-  });
-  if (activeOrders.length === 0) {
-    const bot = await BotModel.findById(order.botId);
-    if (!bot) {
-      return;
-    }
-    bot.status = "active";
-    await bot.save();
-  }
 }
 
 async function handleReplaceOrder(order: OrderEntry) {
   try {
     const clientId = crypto.randomUUID();
-
     const result = await socketOrderReplace({ order, clientId });
     console.log({ result });
   } catch (err) {

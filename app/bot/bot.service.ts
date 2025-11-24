@@ -5,6 +5,10 @@ import { getRabbitChannel, logAndSendToQueue } from "../lib/rabbit";
 import { startBotJob } from "./bot.jobs";
 import { initializeMissingEntryOrders } from "../order/order.service";
 import { createOrderFromBot } from "./bot.utils";
+import {
+  socketOrderCancel,
+  socketOrderStatus,
+} from "../socket/socket.requests";
 
 async function getBotsByUser(userId: string) {
   return await BotModel.find({ userId });
@@ -32,68 +36,36 @@ async function updateBot(botId: string, userId: string, updateData: any) {
   });
 }
 
-async function startBot(botId: string, apiKey: string) {
-  const bot = await BotModel.findById(botId);
-  if (!bot) throw new Error("Bot not found");
-  switch (bot.mode) {
-    case "administrator":
-      await startAdministrator(bot, apiKey);
-      break;
-    default:
-      break;
-  }
-}
-
 async function startAdministrator(bot: BotDocument, apiKey: string) {
   try {
+    const { symbol, sessionId } = bot;
     const orders = await OrderModel.find({
       botId: bot._id,
       status: { $in: ["active", "executed"] },
     });
-    const wasExecuted = orders.find((order) => order.status === "executed");
-    const orderBody = createOrderFromBot(bot);
-    if (wasExecuted) {
-      //desativa o bot para teste caso seja executado
-      bot.status = "inactive";
-      bot.save();
-    } else {
-      const variance = bot.target * 0.013;
-      const buyPrice = (bot.target - variance) / bot.crypto;
-      const sellPrice = (bot.target + variance) / bot.crypto;
-      const buyOrder = orders.find((order) => order.direction === "buy");
-      const sellOrder = orders.find((order) => order.direction === "sell");
-      if (!buyOrder) {
-        const payload = {
-          ...orderBody,
-          direction: "buy",
-          price: buyPrice,
-          quantity: variance / buyPrice,
-          mode: "administrator",
-        };
-        const message = {
-          action: "createOrder",
-          payload,
-          apiKey,
-        };
-        logAndSendToQueue("socket", message);
+    const promises = orders.map((order) =>
+      socketOrderStatus({
+        apiKey,
+        origClientOrderId: order.binanceId,
+        symbol,
+        sessionId: sessionId.toString(),
+      })
+    );
+    const results = await Promise.all(promises);
+    results.forEach(async (result) => {
+      const order = orders.find(
+        (order) => order.binanceId === result.result.clientOrderId
+      );
+      if (!order) return;
+      const executedQtd = Number(result.result.executedQty);
+      if (order.executedQtd !== executedQtd) {
+        order.executedQtd = executedQtd;
+      } else return;
+      if (order.executedQtd > 0) {
+        order.status = "executed";
       }
-      if (!sellOrder) {
-        const payload = {
-          ...orderBody,
-          direction: "sell",
-          price: sellPrice,
-          quantity: variance / sellPrice,
-          mode: "administrator",
-        };
-        const message = {
-          action: "createOrder",
-          payload,
-          apiKey,
-        };
-        logAndSendToQueue("socket", message);
-      }
-      console.log({ buyPrice, sellPrice });
-    }
+      await order.save();
+    });
   } catch (error) {
     bot.status = "error";
     bot.save();
@@ -121,8 +93,8 @@ export const botService = {
   getBotsByUser,
   createBot,
   updateBot,
-  startBot,
   stopBot,
   archiveBot,
   getTotalLimitBySession,
+  startAdministrator,
 };

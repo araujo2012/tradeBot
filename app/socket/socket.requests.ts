@@ -399,13 +399,11 @@ export async function socketOrderStatus({
     timestamp,
   };
   params.signature = signPayload(params);
-
   const message = {
     id: crypto.randomUUID(),
     method: "order.status",
     params,
   };
-
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(
