@@ -3,18 +3,12 @@ import type { Document } from "mongoose";
 
 export interface OrderEntry {
   botId: string;
-  sessionId: string;
-  userId: string;
   mode: "administrator";
   direction: "buy" | "sell";
-  interval: IntervalType;
   price: number;
   quantity: number;
   symbol: string;
-  value: number;
-  apiKey: string;
-  timeMultiplier?: number;
-  type?: "entry" | "normal";
+  position?: 1 | 2 | 3;
 }
 
 export interface CalculateEntryOrderParams {

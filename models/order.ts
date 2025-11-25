@@ -29,6 +29,7 @@ const orderSchema = new Schema(
       required: true,
       default: "closed",
     },
+    position: { type: Number },
   },
   { timestamps: true }
 );
