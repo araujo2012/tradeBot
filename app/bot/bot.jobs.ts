@@ -21,7 +21,10 @@ export async function runBotJob(botId: string, apiKey: string) {
 }
 
 async function runAdministratorJob(bot: BotDocument, apiKey: string) {
-  const orders = await OrderModel.find({ botId: bot._id });
+  const orders = await OrderModel.find({
+    botId: bot._id,
+    status: { $in: ["active", "executed"] },
+  });
   const executedOrders = orders.filter(
     (order) => order.executedQtd === order.quantity
   );

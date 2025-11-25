@@ -49,7 +49,10 @@ export async function socketOrderPlace({
   order,
   clientId,
 }: {
-  order: OrderEntry;
+  order: OrderEntry & {
+    apiKey: string;
+    sessionId: string;
+  };
   clientId: string;
 }): Promise<any> {
   const { sessionId, apiKey } = order;

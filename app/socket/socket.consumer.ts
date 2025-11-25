@@ -99,7 +99,8 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
     const symbolConfig = await SymbolConfigModel.findOne({
       symbol: order.symbol,
     });
-    if (!symbolConfig) throw new Error(`${order.symbol} nao existe`);
+    const bot = await BotModel.findById(order.botId);
+    if (!symbolConfig || !bot) throw new Error(`${order.symbol} nao existe`);
     order.quantity = normalizeValue({
       value: order.quantity,
       isRoundUp: order.mode !== "administrator",
@@ -113,6 +114,8 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
     const clientId = crypto.randomUUID();
     const orderData = {
       ...order,
+      sessionId: bot.sessionId.toString(),
+      userId: bot.userId.toString(),
       binanceId: "",
       status: "pending",
       clientId: clientId,
@@ -126,7 +129,7 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
     );
 
     const { status, result } = await socketOrderPlace({
-      order: { ...order, apiKey },
+      order: { ...orderData, apiKey },
       clientId,
     });
 
