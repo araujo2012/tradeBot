@@ -44,7 +44,7 @@ export async function updateBot(req: Request, res: Response) {
   }
 }
 
-export async function startBot(req: Request, res: Response) {
+/* export async function startBot(req: Request, res: Response) {
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -63,7 +63,7 @@ export async function startBot(req: Request, res: Response) {
     console.error("Error starting bot:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-}
+} */
 
 export async function stopBot(req: Request, res: Response) {
   try {

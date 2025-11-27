@@ -186,7 +186,7 @@ async function handleCancelOrder({
   }
 }
 
-async function handleRestartSession(sessionId: string): Promise<void> {
+/* async function handleRestartSession(sessionId: string): Promise<void> {
   await handleStartSession(sessionId);
   const bots = await BotModel.find({
     sessionId,
@@ -195,7 +195,7 @@ async function handleRestartSession(sessionId: string): Promise<void> {
   for (const bot of bots) {
     botService.startBot(bot._id.toString(), apiKey);
   }
-}
+} */
 
 async function handleSyncOrder(payload: {
   apiKey: string;
@@ -287,9 +287,9 @@ async function processQueue() {
       case "stopSession":
         await handleStopSession(content.sessionId, content.userId);
         break;
-      case "restartSession":
+      /* case "restartSession":
         handleRestartSession(content.sessionId);
-        break;
+        break; */
       case "createOrder":
         await handleCreateOrder(content.payload, content.apiKey);
         break;
