@@ -1,4 +1,4 @@
-import { TransactionModel } from "../../models/transaction";
+/* import { TransactionModel } from "../../models/transaction";
 import { BotModel, BotDocument } from "../../models/bot";
 import { intervalList } from "../order/order.constants";
 import { OrderDoc } from "../order/order.type";
@@ -219,3 +219,4 @@ export async function updateTransactionsByExecutedQtd({
 export async function sleep(ms: number = 1): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+ */

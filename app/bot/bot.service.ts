@@ -3,7 +3,7 @@ import { SessionModel } from "../../models/session";
 import { OrderModel } from "../../models/order";
 import { getRabbitChannel, logAndSendToQueue } from "../lib/rabbit";
 import { startBotJob } from "./bot.jobs";
-import { initializeMissingEntryOrders } from "../order/order.service";
+//import { initializeMissingEntryOrders } from "../order/order.service";
 import { createOrderFromBot } from "./bot.utils";
 import {
   socketOrderCancel,
