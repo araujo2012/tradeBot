@@ -1,5 +1,5 @@
 import { OrderModel } from "../../models/order";
-import { handleExecutedOrder } from "../transaction/transaction.service";
+//import { handleExecutedOrder } from "../transaction/transaction.service";
 import { OrderDoc } from "../order/order.type";
 import { logAndSendToQueue } from "../lib/rabbit";
 import { SessionModel } from "../../models/session";
@@ -65,7 +65,7 @@ export async function handleReplaceOrderResponse(response: any) {
 }
 
 //adicionar logica de ordens executadas
-export async function handleCancelOrderResponse(response: any) {
+/* export async function handleCancelOrderResponse(response: any) {
   try {
     const { c: binanceId, z, Z } = response;
     const executedQtd = Number(z);
@@ -120,7 +120,7 @@ export async function handleFilledOrderResponse(response: any) {
   } catch (error) {
     console.log("handleCancelOrderResponse - ", error);
   }
-}
+} */
 
 export async function handlePartiallyFilledOrderResponse(response: any) {
   try {
