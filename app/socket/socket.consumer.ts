@@ -142,7 +142,7 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
       savedOrder.binanceId = result.clientOrderId || "";
       await savedOrder.save();
     } else {
-      console.log('result?.status !== "NEW": ', result);
+      await handleExecutedOrder();
     }
   } catch (err) {
     console.error("Error creating order:", err);
@@ -162,7 +162,24 @@ async function handleCancelOrder({
   sessionId: string;
 }) {
   try {
-    await socketOrderCancel({ apiKey, origClientOrderId, symbol, sessionId });
+    const result = await socketOrderCancel({
+      apiKey,
+      origClientOrderId,
+      symbol,
+      sessionId,
+    });
+    if (Number(result?.result?.executedQty) > 0) {
+      await handleExecutedOrder();
+    } else {
+      const order = await OrderModel.findOne({
+        binanceId: result?.result?.origClientOrderId,
+      });
+      if (order) {
+        order.status = "closed";
+        await order.save();
+      }
+    }
+    console.log({ result });
   } catch (err) {
     console.error("Error creating order:", err);
     throw err;
@@ -190,15 +207,51 @@ async function handleSyncOrder(payload: {
   const response = await socketOrderStatus(payload);
 }
 
-async function handleReplaceOrder(order: OrderEntry) {
+async function handleReplaceOrder(
+  order: OrderEntry & {
+    sessionId: string;
+  },
+  apiKey: string,
+  binanceId: string
+) {
   try {
     const clientId = crypto.randomUUID();
-    const result = await socketOrderReplace({ order, clientId });
-    console.log({ result });
+    const result = await socketOrderReplace({
+      order,
+      clientId,
+      binanceId,
+      apiKey,
+    });
+    if (result?.result?.cancelResult === "SUCCESS") {
+      const cancelOrder = await OrderModel.findOne({
+        binanceId: result?.result?.cancelResponse?.origClientOrderId,
+      });
+      if (cancelOrder) {
+        cancelOrder.status = "closed";
+        await cancelOrder.save();
+      }
+    }
+    if (result?.result?.newOrderResult === "SUCCESS") {
+      const bot = await BotModel.findById(order.botId);
+      const orderData = {
+        ...order,
+        sessionId: bot?.sessionId.toString(),
+        userId: bot?.userId.toString(),
+        binanceId: result?.result?.newOrderResult?.clientOrderId,
+        status: "active",
+        clientId: clientId,
+        executedQtd: 0,
+      };
+      await OrderModel.create(orderData);
+    }
   } catch (err) {
     console.error("Error creating order:", err);
     throw err;
   }
+}
+
+async function handleExecutedOrder() {
+  console.log("Executed");
 }
 
 async function processQueue() {
@@ -219,6 +272,16 @@ async function processQueue() {
         break;
       case "createOrder":
         await handleCreateOrder(content.payload, content.apiKey);
+        break;
+      case "cancelOrder":
+        await handleCancelOrder(content.payload);
+        break;
+      case "replaceOrder":
+        await handleReplaceOrder(
+          content.payload,
+          content.apiKey,
+          content.binanceId
+        );
         break;
       default:
         console.warn("Unknown status:", content.status);

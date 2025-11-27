@@ -115,11 +115,17 @@ export async function socketOrderPlace({
 export async function socketOrderReplace({
   order,
   clientId,
+  binanceId,
+  apiKey,
 }: {
-  order: OrderEntry;
+  order: OrderEntry & {
+    sessionId: string;
+  };
+  apiKey: string;
+  binanceId: string;
   clientId: string;
 }): Promise<any> {
-  const { sessionId, apiKey } = order;
+  const { sessionId } = order;
   let socket = getBinanceSocket(sessionId);
   if (!socket) {
     await initializeBinanceSocket(sessionId);
@@ -128,19 +134,6 @@ export async function socketOrderReplace({
 
   if (!socket) {
     throw new Error("Failed to initialize Binance socket");
-  }
-
-  const oldOrder = await OrderModel.findOne({
-    botId: order.botId,
-    symbol: order.symbol,
-    type: order.type,
-    direction: order.direction,
-    interval: order.interval,
-  });
-
-  if (!oldOrder) {
-    console.log("Nao foi possivel achar a ordem antiga: ", order);
-    throw new Error("Nao foi possivel achar a ordem antiga.");
   }
 
   // Obter offset do timestamp
@@ -152,7 +145,7 @@ export async function socketOrderReplace({
     apiKey,
     cancelReplaceMode: "STOP_ON_FAILURE",
     cancelRestrictions: "ONLY_NEW",
-    cancelOrigClientOrderId: oldOrder.binanceId,
+    cancelOrigClientOrderId: binanceId,
     price: order.price.toString(),
     quantity: order.quantity.toString(),
     side: order.direction === "buy" ? "BUY" : "SELL",

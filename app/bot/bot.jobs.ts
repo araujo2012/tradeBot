@@ -28,20 +28,55 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
   const executedOrders = orders.filter(
     (order) => order.executedQtd === order.quantity
   );
+  let buyModifier = 0;
+  let sellModifier = 0;
   await Promise.all(
     executedOrders.map((order) => {
       if (order.direction === "buy") {
         bot.crypto += order.executedQtd;
+        buyModifier += 1;
+        sellModifier -= 1;
       } else {
         bot.crypto -= order.executedQtd;
+        sellModifier += 1;
+        buyModifier -= 1;
       }
       order.status = "closed";
       order.save();
     })
   );
   await bot.save();
-  const activeOrders = orders.filter(
+  let activeOrders = orders.filter(
     (order) => order.executedQtd !== order.quantity
+  );
+  let wasCancelled = false;
+  activeOrders.forEach((order) => {
+    let position = order.position as number;
+    position -= order.direction === "buy" ? buyModifier : sellModifier;
+    if (position >= 4) {
+      message = {
+        action: "cancelOrder",
+        payload: {
+          apiKey,
+          origClientOrderId: order.clientId,
+          symbol: bot.symbol,
+          sessionId: bot.sessionId.toString(),
+        },
+      };
+      logAndSendToQueue("socket", message);
+      wasCancelled = true;
+    }
+  });
+  if (wasCancelled) return;
+  await Promise.all(
+    activeOrders.map((order) => {
+      let position = order.position as number;
+      position -= order.direction === "buy" ? buyModifier : sellModifier;
+      if (position !== order.position) {
+        order.position = position;
+        order.save();
+      }
+    })
   );
   const crypto =
     bot.crypto +
@@ -64,10 +99,11 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
   let sellPosition = 0;
   let buyOperation = "";
   let sellOperation = "";
-  for (let i = 3; i >= 0; i -= 1) {
-    const buyOrder = buyOrders[i - 3];
+  for (let i = 3; i > 0; i -= 1) {
+    const buyOrder = buyOrders[3 - i];
     const buyActiveOrder = activeOrders.find(
-      (order) => order.position === buyOrder.position
+      (order) =>
+        order.position === buyOrder.position && order.direction === "buy"
     );
     if (!buyActiveOrder) {
       buyOperation = "create";
@@ -87,10 +123,11 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
       break;
     }
   }
-  for (let i = 3; i >= 0; i -= 1) {
-    const sellOrder = sellOrders[i - 3];
+  for (let i = 3; i > 0; i -= 1) {
+    const sellOrder = sellOrders[3 - i];
     const sellActiveOrder = activeOrders.find(
-      (order) => order.position === sellOrder.position
+      (order) =>
+        order.position === sellOrder.position && order.direction === "sell"
     );
     if (!sellActiveOrder) {
       sellOperation = "create";
@@ -110,14 +147,16 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
       break;
     }
   }
+  let message: any;
+  let order: any;
   switch (buyOperation) {
     case "create":
-      const order = buyOrders.find((order) => order.position === buyPosition);
-      if (!order || buyPosition === 0) break;
-      const message = {
+      order = buyOrders.find((order) => order.position === buyPosition);
+      if (!order) break;
+      message = {
         action: "createOrder",
         payload: {
-          botId: bot._id.toString,
+          botId: bot._id.toString(),
           mode: "administrator",
           direction: "buy",
           price: order.price,
@@ -129,17 +168,54 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
       };
       logAndSendToQueue("socket", message);
       break;
+    case "cancel":
+      order = activeOrders.find(
+        (order) => order.direction === "buy" && order.position === buyPosition
+      );
+      message = {
+        action: "cancelOrder",
+        payload: {
+          apiKey,
+          origClientOrderId: order.clientId,
+          symbol: bot.symbol,
+          sessionId: bot.sessionId.toString(),
+        },
+      };
+      logAndSendToQueue("socket", message);
+      break;
+    case "replace":
+      order = buyOrders.find((order) => order.position === buyPosition);
+      const binanceId = activeOrders.find(
+        (order) => order.direction === "buy" && order.position === buyPosition
+      )?.binanceId;
+      if (!order) break;
+      message = {
+        action: "replaceOrder",
+        payload: {
+          botId: bot._id.toString(),
+          mode: "administrator",
+          direction: "buy",
+          price: order.price,
+          quantity: order.quantity,
+          symbol: bot.symbol,
+          position: buyPosition,
+        },
+        apiKey,
+        binanceId,
+      };
+      logAndSendToQueue("socket", message);
+      break;
     default:
       break;
   }
   switch (sellOperation) {
     case "create":
-      const order = sellOrders.find((order) => order.position === sellPosition);
-      if (!order || sellPosition === 0) break;
-      const message = {
+      order = sellOrders.find((order) => order.position === sellPosition);
+      if (!order) break;
+      message = {
         action: "createOrder",
         payload: {
-          botId: bot._id.toString,
+          botId: bot._id.toString(),
           mode: "administrator",
           direction: "sell",
           price: order.price,
@@ -148,6 +224,43 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
           position: sellPosition,
         },
         apiKey,
+      };
+      logAndSendToQueue("socket", message);
+      break;
+    case "cancel":
+      order = activeOrders.find(
+        (order) => order.direction === "sell" && order.position === sellPosition
+      );
+      message = {
+        action: "cancelOrder",
+        payload: {
+          apiKey,
+          origClientOrderId: order.clientId,
+          symbol: bot.symbol,
+          sessionId: bot.sessionId.toString(),
+        },
+      };
+      logAndSendToQueue("socket", message);
+      break;
+    case "replace":
+      order = sellOrders.find((order) => order.position === sellPosition);
+      const binanceId = activeOrders.find(
+        (order) => order.direction === "sell" && order.position === sellPosition
+      )?.binanceId;
+      if (!order) break;
+      message = {
+        action: "replaceOrder",
+        payload: {
+          botId: bot._id.toString(),
+          mode: "administrator",
+          direction: "sell",
+          price: order.price,
+          quantity: order.quantity,
+          symbol: bot.symbol,
+          position: sellPosition,
+        },
+        apiKey,
+        binanceId,
       };
       logAndSendToQueue("socket", message);
       break;
