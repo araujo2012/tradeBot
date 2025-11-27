@@ -51,6 +51,7 @@ export interface OrderResult {
   orderId: number;
   orderListId: number;
   clientOrderId: string;
+  origClientOrderId: string;
   price: string;
   origQty: string;
   executedQty: string;
