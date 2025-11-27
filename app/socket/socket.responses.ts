@@ -146,14 +146,24 @@ export async function handlePartiallyFilledOrderResponse(response: any) {
   }
 }
 
-export async function handleExecutionReport(binanceId: string) {
-  const order: OrderDoc | null = await OrderModel.findOne({ binanceId });
-  if (!order) {
-    return;
-  }
-  if (order.status === "active") {
-    order.status = "executed";
-    await order.save();
+export async function handleExecutionReport(response: any) {
+  const { event } = response;
+  const { X, C, z } = event;
+  const order = await OrderModel.findOne({ binanceId: C });
+  if (!order) return;
+  switch (X) {
+    case "FILLED":
+      order.executedQtd = Number(z);
+      order.status = "executed";
+      await order.save();
+      break;
+    case "PARTIALLY_FILLED":
+      order.executedQtd = Number(z);
+      order.status = "executed";
+      await order.save();
+      break;
+    default:
+      break;
   }
 }
 

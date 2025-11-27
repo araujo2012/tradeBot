@@ -17,7 +17,6 @@ export async function runBotJob(botId: string, apiKey: string) {
     default:
       break;
   }
-  console.log(bot?.name);
 }
 
 async function runAdministratorJob(bot: BotDocument, apiKey: string) {

@@ -15,7 +15,6 @@ import {
 import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
 import { OrderDoc, OrderEntry } from "../order/order.type";
-import { handleExecutedOrder } from "../transaction/transaction.service";
 import { normalizeValue } from "../order/order.utils";
 
 // Rate limit: 5 mensagens por segundo
@@ -142,7 +141,7 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
       savedOrder.binanceId = result.clientOrderId || "";
       await savedOrder.save();
     } else {
-      await handleExecutedOrder();
+      await handleExecutedOrder(savedOrder, result);
     }
   } catch (err) {
     console.error("Error creating order:", err);
@@ -168,12 +167,12 @@ async function handleCancelOrder({
       symbol,
       sessionId,
     });
+    const order = await OrderModel.findOne({
+      binanceId: result?.result?.origClientOrderId,
+    });
     if (Number(result?.result?.executedQty) > 0) {
-      await handleExecutedOrder();
+      await handleExecutedOrder(order, result?.result);
     } else {
-      const order = await OrderModel.findOne({
-        binanceId: result?.result?.origClientOrderId,
-      });
       if (order) {
         order.status = "closed";
         await order.save();
@@ -237,12 +236,15 @@ async function handleReplaceOrder(
         ...order,
         sessionId: bot?.sessionId.toString(),
         userId: bot?.userId.toString(),
-        binanceId: result?.result?.newOrderResult?.clientOrderId,
+        binanceId: result?.result?.newOrderResponse?.clientOrderId,
         status: "active",
         clientId: clientId,
         executedQtd: 0,
       };
-      await OrderModel.create(orderData);
+      const newOrder = await OrderModel.create(orderData);
+      if (Number(result?.result?.newOrderResponse?.executedQty) > 0) {
+        handleExecutedOrder(newOrder, result?.result);
+      }
     }
   } catch (err) {
     console.error("Error creating order:", err);
@@ -250,7 +252,7 @@ async function handleReplaceOrder(
   }
 }
 
-async function handleExecutedOrder() {
+async function handleExecutedOrder(order: any, result: any) {
   console.log("Executed");
 }
 

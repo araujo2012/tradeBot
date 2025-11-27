@@ -54,6 +54,9 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
         });
         if (msg?.id && msg?.status === 200 && msg?.result?.status === "NEW") {
           handlePlaceOrderResponse(msg);
+        } else if (msg?.event?.e === "outboundAccountPosition") {
+        } else if (msg?.event?.e === "executionReport") {
+          handleExecutionReport(msg);
         } else {
           console.log("socket", msg);
         }
