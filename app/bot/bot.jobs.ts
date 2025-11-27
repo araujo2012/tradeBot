@@ -7,6 +7,7 @@ import { handleExecutedOrder } from "../executedOrder/executedOrder.service";
 import { normalizeValue } from "../order/order.utils";
 import { SymbolConfigModel } from "../../models/symbolConfig";
 import { logAndSendToQueue } from "../lib/rabbit";
+import { socketOrderStatus } from "../socket/socket.requests";
 
 export async function runBotJob(botId: string, apiKey: string) {
   const bot = await BotModel.findById(botId);
@@ -24,13 +25,13 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
     botId: bot._id,
     status: { $in: ["active", "executed"] },
   });
-  const executedOrders = orders.filter(
+  const filledOrders = orders.filter(
     (order) => order.executedQtd === order.quantity
   );
   let buyModifier = 0;
   let sellModifier = 0;
   await Promise.all(
-    executedOrders.map((order) => {
+    filledOrders.map((order) => {
       if (order.direction === "buy") {
         bot.crypto += order.executedQtd;
         buyModifier += 1;
@@ -44,11 +45,39 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
       order.save();
     })
   );
+  const executedOrders = orders.filter(
+    (order) =>
+      order.executedQtd !== order.quantity && order.status === "executed"
+  );
+  await Promise.all(
+    executedOrders.map(async (order) => {
+      const result = await socketOrderStatus({
+        apiKey,
+        origClientOrderId: order.binanceId,
+        symbol: order.symbol,
+        sessionId: order.sessionId.toString(),
+      });
+      if (result?.result?.status === "CANCELED") {
+        order.status = "closed";
+        if (order.direction === "buy") {
+          bot.crypto += order.executedQtd;
+          buyModifier += 1;
+          sellModifier -= 1;
+        } else {
+          bot.crypto -= order.executedQtd;
+          sellModifier += 1;
+          buyModifier -= 1;
+        }
+        order.save();
+      }
+    })
+  );
   await bot.save();
   let activeOrders = orders.filter(
     (order) => order.executedQtd !== order.quantity
   );
   let wasCancelled = false;
+  let message: any;
   activeOrders.forEach((order) => {
     let position = order.position as number;
     position -= order.direction === "buy" ? buyModifier : sellModifier;
@@ -146,7 +175,6 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
       break;
     }
   }
-  let message: any;
   let order: any;
   switch (buyOperation) {
     case "create":

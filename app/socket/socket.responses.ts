@@ -148,9 +148,13 @@ export async function handlePartiallyFilledOrderResponse(response: any) {
 
 export async function handleExecutionReport(response: any) {
   const { event } = response;
-  const { X, C, z } = event;
-  const order = await OrderModel.findOne({ binanceId: C });
-  if (!order) return;
+  const { X, c, z } = event;
+  if (X === "NEW") return;
+  const order = await OrderModel.findOne({ binanceId: c });
+  if (!order) {
+    console.log(response, " nao foi possivel encontrar");
+    return;
+  }
   switch (X) {
     case "FILLED":
       order.executedQtd = Number(z);

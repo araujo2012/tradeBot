@@ -1,6 +1,6 @@
 import { connectToRabbitMQ } from "../lib/rabbit";
 import { SessionModel } from "../../models/session";
-import { OrderModel } from "../../models/order";
+import { OrderDocument, OrderModel } from "../../models/order";
 import { BotModel } from "../../models/bot";
 import { botService } from "../bot/bot.service";
 import { SymbolConfigModel } from "../../models/symbolConfig";
@@ -14,7 +14,7 @@ import {
 } from "./socket.requests";
 import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
-import { OrderDoc, OrderEntry } from "../order/order.type";
+import { OrderEntry } from "../order/order.type";
 import { normalizeValue } from "../order/order.utils";
 
 // Rate limit: 5 mensagens por segundo
@@ -141,6 +141,7 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
       savedOrder.binanceId = result.clientOrderId || "";
       await savedOrder.save();
     } else {
+      savedOrder.binanceId = result.clientOrderId || "";
       await handleExecutedOrder(savedOrder, result);
     }
   } catch (err) {
@@ -170,10 +171,10 @@ async function handleCancelOrder({
     const order = await OrderModel.findOne({
       binanceId: result?.result?.origClientOrderId,
     });
-    if (Number(result?.result?.executedQty) > 0) {
-      await handleExecutedOrder(order, result?.result);
-    } else {
-      if (order) {
+    if (order) {
+      if (Number(result?.result?.executedQty) > 0) {
+        await handleExecutedOrder(order, result?.result);
+      } else {
         order.status = "closed";
         await order.save();
       }
@@ -252,8 +253,25 @@ async function handleReplaceOrder(
   }
 }
 
-async function handleExecutedOrder(order: any, result: any) {
+async function handleExecutedOrder(order: OrderDocument, result: any) {
+  switch (order.mode) {
+    case "administrator":
+      await handleExecutedOrderAdministrator(order, result);
+      break;
+    default:
+      break;
+  }
   console.log("Executed");
+}
+
+async function handleExecutedOrderAdministrator(
+  order: OrderDocument,
+  result: any
+) {
+  const executed = Number(result.executedQty);
+  order.executedQtd = executed;
+  order.status = "executed";
+  await order.save();
 }
 
 async function processQueue() {

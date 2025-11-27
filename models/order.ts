@@ -1,7 +1,26 @@
 import { directionList, intervalList } from "../app/order/order.constants";
-import { Schema, model } from "mongoose";
+import { Schema, model, HydratedDocument, Types } from "mongoose";
 
-const orderSchema = new Schema(
+export interface OrderType {
+  userId: Types.ObjectId;
+  botId: Types.ObjectId;
+  sessionId: Types.ObjectId;
+  mode: "administrator";
+  symbol: string;
+  price: number;
+  quantity: number;
+  value: number;
+  direction: string;
+  binanceId: string;
+  clientId: string;
+  executedQtd: number;
+  status: "active" | "executed" | "closed" | "pending";
+  position?: number;
+}
+
+export type OrderDocument = HydratedDocument<OrderType>;
+
+const orderSchema = new Schema<OrderType>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     botId: { type: Schema.Types.ObjectId, ref: "Bot", required: true },

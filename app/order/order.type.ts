@@ -35,6 +35,7 @@ export type OrderDoc = Document & {
   executed?: boolean;
   executedQtd: number;
   status: "active" | "executed" | "closed" | "pending";
+  mode: "administrator";
   createdAt?: Date;
   updatedAt?: Date;
   lastExecutedTime?: Date;
