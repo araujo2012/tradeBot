@@ -1,8 +1,8 @@
-import { SessionModel } from "../../models/session";
+//import { SessionModel } from "../../models/session";
 import { BotDocument, BotModel } from "../../models/bot";
 //import { setOrders } from "../order/order.service";
 import { OrderModel } from "../../models/order";
-import { OrderDoc } from "../order/order.type";
+//import { OrderDoc } from "../order/order.type";
 //import { handleExecutedOrder } from "../executedOrder/executedOrder.service";
 import { normalizeValue } from "../order/order.utils";
 import { SymbolConfigModel } from "../../models/symbolConfig";
@@ -11,6 +11,7 @@ import { socketOrderStatus } from "../socket/socket.requests";
 
 export async function runBotJob(botId: string, apiKey: string) {
   const bot = await BotModel.findById(botId);
+  console.time(bot?.name || "bot");
   switch (bot?.mode) {
     case "administrator":
       await runAdministratorJob(bot, apiKey);
@@ -18,6 +19,7 @@ export async function runBotJob(botId: string, apiKey: string) {
     default:
       break;
   }
+  console.timeEnd(bot?.name || "bot");
 }
 
 async function runAdministratorJob(bot: BotDocument, apiKey: string) {
@@ -74,38 +76,32 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
   );
   await bot.save();
   let activeOrders = orders.filter(
-    (order) => order.executedQtd !== order.quantity
+    (order) => order.executedQtd !== order.quantity && order.status !== "closed"
   );
   let wasCancelled = false;
   let message: any;
-  activeOrders.forEach((order) => {
-    let position = order.position as number;
-    position -= order.direction === "buy" ? buyModifier : sellModifier;
-    if (position >= 4) {
-      message = {
-        action: "cancelOrder",
-        payload: {
-          apiKey,
-          origClientOrderId: order.clientId,
-          symbol: bot.symbol,
-          sessionId: bot.sessionId.toString(),
-        },
-      };
-      logAndSendToQueue("socket", message);
-      wasCancelled = true;
-    }
-  });
-  if (wasCancelled) return;
   await Promise.all(
     activeOrders.map((order) => {
       let position = order.position as number;
       position -= order.direction === "buy" ? buyModifier : sellModifier;
-      if (position !== order.position) {
-        order.position = position;
-        order.save();
+      order.position = position;
+      if (position >= 4) {
+        message = {
+          action: "cancelOrder",
+          payload: {
+            apiKey,
+            origClientOrderId: order.binanceId,
+            symbol: bot.symbol,
+            sessionId: bot.sessionId.toString(),
+          },
+        };
+        logAndSendToQueue("socket", message);
+        wasCancelled = true;
       }
+      order.save();
     })
   );
+  if (wasCancelled) return;
   const crypto =
     bot.crypto +
     activeOrders.reduce((acc, order) => {
@@ -383,6 +379,7 @@ const botIntervals: Record<string, NodeJS.Timeout> = {};
 
 export function startBotJob(botId: string, apiKey: string) {
   if (botIntervals[botId]) return; // já está rodando
+  //runBotJob(botId, apiKey);
   botIntervals[botId] = setInterval(() => runBotJob(botId, apiKey), 60 * 1000);
   console.log(`Bot ${botId} iniciado.`);
 }
