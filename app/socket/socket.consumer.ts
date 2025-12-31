@@ -16,7 +16,7 @@ import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
 import { OrderEntry } from "../order/order.type";
 import { normalizeValue } from "../order/order.utils";
-import { stopBotJob } from "app/bot/bot.jobs";
+import { stopBotJob } from "../bot/bot.jobs";
 
 // Rate limit: 5 mensagens por segundo
 const RATE_LIMIT = 5;
