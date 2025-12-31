@@ -11,7 +11,6 @@ import { socketOrderStatus } from "../socket/socket.requests";
 
 export async function runBotJob(botId: string, apiKey: string) {
   const bot = await BotModel.findById(botId);
-  console.time(bot?.name || "bot");
   switch (bot?.mode) {
     case "administrator":
       await runAdministratorJob(bot, apiKey);
@@ -19,7 +18,6 @@ export async function runBotJob(botId: string, apiKey: string) {
     default:
       break;
   }
-  console.timeEnd(bot?.name || "bot");
 }
 
 async function runAdministratorJob(bot: BotDocument, apiKey: string) {

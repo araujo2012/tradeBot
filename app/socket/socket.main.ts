@@ -10,6 +10,8 @@ import { WebsocketDataModel } from "../../models/websocketData";
 const { reconnectUserSocket } = sessionService;
 const socketMap = new Map<string, WebSocket>();
 const lastPingMap = new Map<string, number>();
+const reconnectingMap = new Set<string>();
+const retryCountMap = new Map<string, number>();
 
 export function getBinanceSocket(sessionId: string): WebSocket | null {
   return socketMap.get(sessionId) || null;
@@ -26,25 +28,21 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
     });
 
     ws.on("ping", (data) => {
+      console.log(data);
       lastPingMap.set(sessionId, Date.now());
       ws.pong(data);
     });
 
     ws.on("close", () => {
-      console.warn(`⚠️ WebSocket fechado para sessão ${sessionId}`);
-      socketMap.delete(sessionId);
-      lastPingMap.delete(sessionId);
-      reconnectUserSocket(sessionId);
+      handleSocketFailure(sessionId, "close");
     });
 
     ws.on("error", (err) => {
-      console.error(`❌ Erro WebSocket para sessão ${sessionId}`, err);
-      socketMap.delete(sessionId);
-      lastPingMap.delete(sessionId);
-      reject(err);
+      console.error(`❌ WebSocket erro ${sessionId}`, err);
+      handleSocketFailure(sessionId, "error");
     });
 
-    ws.on("message", (data) => {
+    ws.on("message", (data: any) => {
       try {
         const msg = JSON.parse(data.toString());
         WebsocketDataModel.create({
@@ -76,21 +74,44 @@ export function startPingMonitor() {
   setInterval(() => {
     const now = Date.now();
     for (const [sessionId, lastPing] of lastPingMap.entries()) {
-      const diff = now - lastPing;
-      if (diff > 60000) {
-        console.warn(
-          `⏱️ Ping timeout detectado para sessão ${sessionId} (${diff}ms)`
-        );
-        const socket = getBinanceSocket(sessionId);
-        if (socket) {
-          socket.terminate();
-        }
-        socketMap.delete(sessionId);
-        lastPingMap.delete(sessionId);
-        reconnectUserSocket(sessionId);
+      if (now - lastPing > 90_000) {
+        handleSocketFailure(sessionId, "ping-timeout");
       }
     }
-  }, 60_000);
+  }, 30_000);
 
   console.log("🛰️ Ping monitor iniciado");
+}
+
+async function handleSocketFailure(sessionId: string, reason: string) {
+  const delay = getBackoffDelay(sessionId);
+  setTimeout(() => reconnectUserSocket(sessionId), delay);
+  if (reconnectingMap.has(sessionId)) {
+    console.warn(`🔁 Reconexão já em andamento: ${sessionId}`);
+    return;
+  }
+
+  reconnectingMap.add(sessionId);
+
+  console.warn(`♻️ Reconectando sessão ${sessionId} | Motivo: ${reason}`);
+
+  const socket = socketMap.get(sessionId);
+  if (socket) {
+    try {
+      socket.terminate();
+    } catch {}
+  }
+
+  socketMap.delete(sessionId);
+  lastPingMap.delete(sessionId);
+
+  await reconnectUserSocket(sessionId);
+
+  reconnectingMap.delete(sessionId);
+}
+
+function getBackoffDelay(sessionId: string) {
+  const retry = retryCountMap.get(sessionId) || 0;
+  retryCountMap.set(sessionId, retry + 1);
+  return Math.min(30_000, 2 ** retry * 1000);
 }
