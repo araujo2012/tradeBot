@@ -74,7 +74,7 @@ async function startAdministrator(bot: BotDocument, apiKey: string) {
   }
 }
 
-async function stopBot(botId: string, userId: string) {
+async function stopBot({ botId, userId }: { botId: string; userId: string }) {
   const bot = await BotModel.findOne({ _id: botId, userId });
   if (!bot) throw new Error("Bot not found");
   bot.status = "inactive";

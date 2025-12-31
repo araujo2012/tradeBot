@@ -22,6 +22,7 @@ const RATE_LIMIT = 5;
 const INTERVAL_MS = 1000 / RATE_LIMIT;
 let processing = false;
 const queue: any[] = [];
+const restartingSessions = new Set<string>();
 
 // Função para processar startSession
 async function handleStartSession(sessionId: string) {
@@ -186,16 +187,61 @@ async function handleCancelOrder({
   }
 }
 
-/* async function handleRestartSession(sessionId: string): Promise<void> {
-  await handleStartSession(sessionId);
-  const bots = await BotModel.find({
-    sessionId,
-    status: { $in: ["active", "pending"] },
-  });
-  for (const bot of bots) {
-    botService.startBot(bot._id.toString(), apiKey);
+export async function handleRestartSession(sessionId: string) {
+  if (restartingSessions.has(sessionId)) {
+    console.warn(`🔁 Restart já em andamento para sessão ${sessionId}`);
+    return;
   }
-} */
+
+  restartingSessions.add(sessionId);
+
+  let session;
+  try {
+    session = await SessionModel.findById(sessionId);
+    if (!session) {
+      console.warn(`⚠️ Sessão não encontrada: ${sessionId}`);
+      return;
+    }
+
+    const { userId } = session;
+
+    session.status = "reconnecting";
+    await session.save();
+
+    sendToUser(userId.toString(), {
+      type: "session",
+      status: "reconnecting",
+      sessionId,
+    });
+
+    // 1️⃣ Cleanup total
+    closeBinanceSocket(sessionId);
+    await stopSessionBots(sessionId);
+
+    // 2️⃣ Pequeno delay (protege contra loop)
+    await new Promise((r) => setTimeout(r, 1500));
+
+    // 3️⃣ Start reutilizando a lógica existente
+    await handleStartSession(sessionId);
+  } catch (err) {
+    console.error(`❌ Falha ao reiniciar sessão ${sessionId}`, err);
+
+    if (session?.userId) {
+      sendToUser(session.userId.toString(), {
+        type: "session",
+        status: "inactive",
+        sessionId,
+      });
+    }
+
+    if (session) {
+      session.status = "inactive";
+      await session.save();
+    }
+  } finally {
+    restartingSessions.delete(sessionId);
+  }
+}
 
 async function handleSyncOrder(payload: {
   apiKey: string;
@@ -274,6 +320,30 @@ async function handleExecutedOrderAdministrator(
   await order.save();
 }
 
+function closeBinanceSocket(sessionId: string) {
+  const socket = getBinanceSocket(sessionId);
+  if (socket) {
+    try {
+      socket.terminate();
+    } catch {}
+  }
+}
+
+async function stopSessionBots(sessionId: string) {
+  const bots = await BotModel.find({ sessionId, status: "active" });
+
+  for (const bot of bots) {
+    try {
+      botService.stopBot({
+        botId: bot._id.toString(),
+        userId: bot.userId.toString(),
+      });
+    } catch (err) {
+      console.error(`Erro ao parar bot ${bot._id}`, err);
+    }
+  }
+}
+
 async function processQueue() {
   if (processing || queue.length === 0) return;
   processing = true;
@@ -287,9 +357,9 @@ async function processQueue() {
       case "stopSession":
         await handleStopSession(content.sessionId, content.userId);
         break;
-      /* case "restartSession":
+      case "restartSession":
         handleRestartSession(content.sessionId);
-        break; */
+        break;
       case "createOrder":
         await handleCreateOrder(content.payload, content.apiKey);
         break;
@@ -304,7 +374,7 @@ async function processQueue() {
         );
         break;
       default:
-        console.warn("Unknown status:", content.status);
+        console.warn("Unknown status:", content.action);
     }
     channel.ack(msg);
   } catch (err) {

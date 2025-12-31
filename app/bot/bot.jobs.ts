@@ -377,14 +377,16 @@ const botIntervals: Record<string, NodeJS.Timeout> = {};
 
 export function startBotJob(botId: string, apiKey: string) {
   if (botIntervals[botId]) return; // já está rodando
-  //runBotJob(botId, apiKey);
-  botIntervals[botId] = setInterval(() => runBotJob(botId, apiKey), 60 * 1000);
+  runBotJob(botId, apiKey).catch(console.error);
+  botIntervals[botId] = setInterval(() => runBotJob(botId, apiKey), 60_000);
   console.log(`Bot ${botId} iniciado.`);
 }
 
 export function stopBotJob(botId: string) {
-  if (botIntervals[botId]) {
-    clearInterval(botIntervals[botId]);
-    delete botIntervals[botId];
+  if (!botIntervals[botId]) {
+    console.warn(`Bot ${botId} não está rodando`);
+    return;
   }
+  clearInterval(botIntervals[botId]);
+  delete botIntervals[botId];
 }
