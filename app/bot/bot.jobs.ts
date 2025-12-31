@@ -13,7 +13,6 @@ const botIntervals: Record<string, NodeJS.Timeout> = {};
 
 export async function runBotJob(botId: string, apiKey: string) {
   const bot = await BotModel.findById(botId);
-  console.log(bot?.name);
   switch (bot?.mode) {
     case "administrator":
       await runAdministratorJob(bot, apiKey);
