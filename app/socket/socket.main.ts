@@ -28,8 +28,7 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
     });
 
     ws.on("ping", (data) => {
-      console.log(data);
-      lastPingMap.set(sessionId, Date.now());
+      //lastPingMap.set(sessionId, Date.now());
       ws.pong(data);
     });
 
