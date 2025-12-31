@@ -16,6 +16,7 @@ import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
 import { OrderEntry } from "../order/order.type";
 import { normalizeValue } from "../order/order.utils";
+import { stopBotJob } from "app/bot/bot.jobs";
 
 // Rate limit: 5 mensagens por segundo
 const RATE_LIMIT = 5;
@@ -324,10 +325,7 @@ async function stopSessionBots(sessionId: string) {
 
   for (const bot of bots) {
     try {
-      botService.stopBot({
-        botId: bot._id.toString(),
-        userId: bot.userId.toString(),
-      });
+      stopBotJob(bot._id.toString());
     } catch (err) {
       console.error(`Erro ao parar bot ${bot._id}`, err);
     }

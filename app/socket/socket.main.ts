@@ -38,7 +38,6 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
 
     ws.on("error", (err) => {
       console.error(`❌ WebSocket erro ${sessionId}`, err);
-      handleSocketFailure(sessionId, "error");
     });
 
     ws.on("message", (data: any) => {
