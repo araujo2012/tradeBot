@@ -215,7 +215,6 @@ export async function handleRestartSession(sessionId: string) {
     });
 
     // 1️⃣ Cleanup total
-    closeBinanceSocket(sessionId);
     await stopSessionBots(sessionId);
 
     // 2️⃣ Pequeno delay (protege contra loop)
@@ -318,15 +317,6 @@ async function handleExecutedOrderAdministrator(
   order.executedQtd = executed;
   order.status = "executed";
   await order.save();
-}
-
-function closeBinanceSocket(sessionId: string) {
-  const socket = getBinanceSocket(sessionId);
-  if (socket) {
-    try {
-      socket.terminate();
-    } catch {}
-  }
 }
 
 async function stopSessionBots(sessionId: string) {
