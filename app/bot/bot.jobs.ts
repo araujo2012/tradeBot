@@ -8,6 +8,8 @@ import { normalizeValue } from "../order/order.utils";
 import { SymbolConfigModel } from "../../models/symbolConfig";
 import { logAndSendToQueue } from "../lib/rabbit";
 import { socketOrderStatus } from "../socket/socket.requests";
+const botStarting = new Set<string>();
+const botIntervals: Record<string, NodeJS.Timeout> = {};
 
 export async function runBotJob(botId: string, apiKey: string) {
   const bot = await BotModel.findById(botId);
@@ -356,31 +358,26 @@ function generateNewOrdersAdministrator(
   return [buyOrders.reverse(), sellOrders.reverse()];
 }
 
-const botIntervals: Record<string, NodeJS.Timeout> = {};
-
-/* function handleExecutedOrders(
-  orders: OrderDoc[],
-  apiKey: string,
-  bot: BotDocument
-) {
-  const promises = [];
-  for (const order of orders) {
-    promises.push(
-      handleExecutedOrder({
-        order,
-        apiKey,
-        bot,
-      })
-    );
+export async function startBotJob(botId: string, apiKey: string) {
+  if (botIntervals[botId] || botStarting.has(botId)) return;
+  botStarting.add(botId);
+  const delay = Math.floor(Math.random() * 60_000);
+  await new Promise((r) => setTimeout(r, delay));
+  if (botIntervals[botId]) {
+    botStarting.delete(botId);
+    return;
   }
-  return Promise.all(promises);
-} */
+  try {
+    await runBotJob(botId, apiKey);
+  } catch (err) {
+    console.error(err);
+  }
 
-export function startBotJob(botId: string, apiKey: string) {
-  if (botIntervals[botId]) return; // já está rodando
-  runBotJob(botId, apiKey).catch(console.error);
-  botIntervals[botId] = setInterval(() => runBotJob(botId, apiKey), 60_000);
-  console.log(`Bot ${botId} iniciado.`);
+  botIntervals[botId] = setInterval(() => {
+    runBotJob(botId, apiKey).catch(console.error);
+  }, 60_000);
+  botStarting.delete(botId);
+  console.log(`🤖 Bot ${botId} iniciado.`);
 }
 
 export function stopBotJob(botId: string) {
@@ -390,4 +387,5 @@ export function stopBotJob(botId: string) {
   }
   clearInterval(botIntervals[botId]);
   delete botIntervals[botId];
+  botStarting.delete(botId);
 }
