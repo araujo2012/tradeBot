@@ -82,8 +82,6 @@ export function startPingMonitor() {
 }
 
 async function handleSocketFailure(sessionId: string, reason: string) {
-  const delay = getBackoffDelay(sessionId);
-  setTimeout(() => reconnectUserSocket(sessionId), delay);
   if (reconnectingMap.has(sessionId)) {
     console.warn(`🔁 Reconexão já em andamento: ${sessionId}`);
     return;
@@ -103,9 +101,18 @@ async function handleSocketFailure(sessionId: string, reason: string) {
   socketMap.delete(sessionId);
   lastPingMap.delete(sessionId);
 
-  await reconnectUserSocket(sessionId);
+  const delay = getBackoffDelay(sessionId);
 
-  reconnectingMap.delete(sessionId);
+  setTimeout(async () => {
+    try {
+      await reconnectUserSocket(sessionId);
+    } catch (err) {
+      console.error(`❌ Falha ao reconectar sessão ${sessionId}`, err);
+    } finally {
+      // ✅ AGORA sim é seguro liberar
+      reconnectingMap.delete(sessionId);
+    }
+  }, delay);
 }
 
 function getBackoffDelay(sessionId: string) {
