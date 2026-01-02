@@ -1,9 +1,7 @@
 import WebSocket from "ws";
 import {
-  handleErrors,
   handleExecutionReport,
   handlePlaceOrderResponse,
-  handleReplaceOrderResponse,
 } from "./socket.responses";
 import { sessionService } from "../session/session.service";
 import { WebsocketDataModel } from "../../models/websocketData";
