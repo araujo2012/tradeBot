@@ -5,7 +5,7 @@ import {
 } from "./socket.responses";
 import { sessionService } from "../session/session.service";
 import { WebsocketDataModel } from "../../models/websocketData";
-import { logger } from "app/lib/pino";
+import { logger } from "../lib/pino";
 const { reconnectUserSocket } = sessionService;
 const socketMap = new Map<string, WebSocket>();
 const lastPingMap = new Map<string, number>();

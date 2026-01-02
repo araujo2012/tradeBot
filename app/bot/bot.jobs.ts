@@ -8,7 +8,7 @@ import { normalizeValue } from "../order/order.utils";
 import { SymbolConfigModel } from "../../models/symbolConfig";
 import { logAndSendToQueue } from "../lib/rabbit";
 import { socketOrderStatus } from "../socket/socket.requests";
-import { logger } from "app/lib/pino";
+import { logger } from "../lib/pino";
 const botStarting = new Set<string>();
 const botIntervals: Record<string, NodeJS.Timeout> = {};
 

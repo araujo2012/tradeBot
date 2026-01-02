@@ -3,7 +3,7 @@ import { OrderModel } from "../../models/order";
 import { OrderDoc } from "../order/order.type";
 import { logAndSendToQueue } from "../lib/rabbit";
 import { SessionModel } from "../../models/session";
-import { logger } from "app/lib/pino";
+import { logger } from "../lib/pino";
 
 export async function handlePlaceOrderResponse(response: any) {
   const { id, result } = response;
