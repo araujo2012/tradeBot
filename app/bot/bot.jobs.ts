@@ -8,6 +8,7 @@ import { normalizeValue } from "../order/order.utils";
 import { SymbolConfigModel } from "../../models/symbolConfig";
 import { logAndSendToQueue } from "../lib/rabbit";
 import { socketOrderStatus } from "../socket/socket.requests";
+import { logger } from "app/lib/pino";
 const botStarting = new Set<string>();
 const botIntervals: Record<string, NodeJS.Timeout> = {};
 
@@ -376,7 +377,7 @@ export async function startBotJob(botId: string, apiKey: string) {
     runBotJob(botId, apiKey).catch(console.error);
   }, 60_000);
   botStarting.delete(botId);
-  console.log(`🤖 Bot ${botId} iniciado.`);
+  logger.info(`🤖 Bot ${botId} iniciado.`);
 }
 
 export function stopBotJob(botId: string) {

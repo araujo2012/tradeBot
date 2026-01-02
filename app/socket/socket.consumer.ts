@@ -17,6 +17,7 @@ import { sendToUser } from "../../websocket";
 import { OrderEntry } from "../order/order.type";
 import { normalizeValue } from "../order/order.utils";
 import { stopBotJob } from "../bot/bot.jobs";
+import { logger } from "app/lib/pino";
 
 // Rate limit: 5 mensagens por segundo
 const RATE_LIMIT = 5;
@@ -45,7 +46,7 @@ async function handleStartSession(sessionId: string) {
     session.status = "active";
     await session.save();
 
-    console.log(`Session ${sessionId} started for user ${sessionId}`);
+    logger.info(`Session ${sessionId} started for user ${sessionId}`);
     sendToUser(userId.toString(), {
       type: "session",
       status: "active",
@@ -85,7 +86,7 @@ async function handleStopSession(sessionId: string, userId: string) {
     await SessionModel.findByIdAndUpdate(sessionId, {
       status: "inactive",
     });
-    console.log(`Session ${sessionId} stopped for user ${userId}`);
+    logger.warn(`Session ${sessionId} stopped for user ${userId}`);
     // Sucesso: status inactive
     sendToUser(userId, { type: "session", status: "inactive", sessionId });
   } catch (err) {
@@ -125,7 +126,7 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
 
     const savedOrder = await OrderModel.create(orderData);
 
-    console.log(
+    logger.info(
       `Order ${savedOrder ? "updated" : "created"}: ${savedOrder?._id}`
     );
 
@@ -135,7 +136,7 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
     });
 
     if (status !== 200) {
-      console.log("status !== 200: ", result);
+      logger.info("status !== 200: ", result);
     }
 
     if (result?.status === "NEW") {
@@ -181,7 +182,7 @@ async function handleCancelOrder({
         await order.save();
       }
     }
-    console.log({ result });
+    logger.info({ result });
   } catch (err) {
     console.error("Error creating order:", err);
     throw err;
@@ -307,7 +308,7 @@ async function handleExecutedOrder(order: OrderDocument, result: any) {
     default:
       break;
   }
-  console.log("Executed");
+  logger.info("Executed");
 }
 
 async function handleExecutedOrderAdministrator(
@@ -377,7 +378,7 @@ export async function startSocketConsumer() {
   const channel = await connectToRabbitMQ();
   await channel.assertQueue("socket", { durable: true });
   channel.prefetch(50);
-  console.log("[SOCKET CONSUMER] Waiting for messages in 'socket' queue...");
+  logger.info("[SOCKET CONSUMER] Waiting for messages in 'socket' queue...");
 
   channel.consume(
     "socket",

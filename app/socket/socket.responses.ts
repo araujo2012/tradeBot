@@ -3,6 +3,7 @@ import { OrderModel } from "../../models/order";
 import { OrderDoc } from "../order/order.type";
 import { logAndSendToQueue } from "../lib/rabbit";
 import { SessionModel } from "../../models/session";
+import { logger } from "app/lib/pino";
 
 export async function handlePlaceOrderResponse(response: any) {
   const { id, result } = response;
@@ -40,15 +41,16 @@ export async function handleExecutionReport(response: any) {
   if (status === "CANCELED") {
     const order = await OrderModel.findOne({ binanceId: cancelOrderId });
     if (!order) {
-      console.log(response, " nao foi possivel encontrar");
+      logger.info({ response }, "Order nao encontrada");
       return;
     }
     order.status = Number(z) > 0 ? "executed" : "closed";
+    await order.save();
     return;
   }
   const order = await OrderModel.findOne({ binanceId: clientOrderId });
   if (!order) {
-    console.log(response, " nao foi possivel encontrar");
+    logger.info({ response }, "Order nao encontrada");
     return;
   }
   if (status === "FILLED" || status === "PARTIALLY_FILLED") {
@@ -59,5 +61,5 @@ export async function handleExecutionReport(response: any) {
 }
 
 export async function handleErrors(response: any) {
-  console.log(response);
+  logger.error(response);
 }

@@ -9,6 +9,7 @@ import { WebSocket } from "ws";
 import { WebsocketDataModel } from "../../models/websocketData";
 import { OrderModel } from "../../models/order";
 import { BinanceOrderResponse } from "../binance/binance.interface";
+import { logger } from "app/lib/pino";
 
 // Lê e prepara a chave privada Ed25519
 const PRIVATE_KEY_PATH = path.resolve(
@@ -165,7 +166,7 @@ export async function socketOrderReplace({
     params: params,
   };
 
-  console.log(message);
+  logger.info(message);
 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {

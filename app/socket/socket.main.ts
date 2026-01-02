@@ -5,6 +5,7 @@ import {
 } from "./socket.responses";
 import { sessionService } from "../session/session.service";
 import { WebsocketDataModel } from "../../models/websocketData";
+import { logger } from "app/lib/pino";
 const { reconnectUserSocket } = sessionService;
 const socketMap = new Map<string, WebSocket>();
 const lastPingMap = new Map<string, number>();
@@ -52,10 +53,10 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
         } else if (msg?.event?.e === "executionReport") {
           handleExecutionReport(msg);
         } else {
-          console.log("socket", msg);
+          logger.info("socket", msg);
         }
       } catch (err) {
-        console.log(`📩 (${sessionId}) [ERRO PARSE]`, data.toString());
+        logger.info(`📩 (${sessionId}) [ERRO PARSE]`, data.toString());
       }
     });
   });
@@ -76,7 +77,7 @@ export function startPingMonitor() {
     }
   }, 30_000);
 
-  console.log("🛰️ Ping monitor iniciado");
+  logger.info("🛰️ Ping monitor iniciado");
 }
 
 async function handleSocketFailure(sessionId: string, reason: string) {
