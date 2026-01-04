@@ -7,7 +7,7 @@ export interface BotType {
   symbol: "BTCBRL" | "ETHBRL" | "USDTBRL" | "BNBBRL" | "SOLBRL" | "XRPBRL";
   status: "active" | "inactive" | "archive" | "pending" | "error";
   limit: number;
-  mode: "administrator";
+  mode: "administrator" | "manager";
   brl: number;
   crypto: number;
   target: number;

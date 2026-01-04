@@ -3,19 +3,6 @@ import mongoose, { Schema, HydratedDocument } from "mongoose";
 
 export type BotDocument = HydratedDocument<BotType>;
 
-export interface BotDoc {
-  name: string;
-  sessionId: string;
-  userId: string;
-  symbol: string;
-  status: string;
-  mode: string;
-  limit: number;
-  brl: number;
-  crypto: number;
-  updatedTime: Date;
-}
-
 const botSchema = new Schema<BotDocument>(
   {
     name: { type: String, required: true },
@@ -38,7 +25,7 @@ const botSchema = new Schema<BotDocument>(
     },
     mode: {
       type: String,
-      enum: ["administrator"],
+      enum: ["administrator", "manager"],
       required: true,
     },
     target: {

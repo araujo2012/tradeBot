@@ -1,9 +1,6 @@
 //import { SessionModel } from "../../models/session";
 import { BotDocument, BotModel } from "../../models/bot";
-//import { setOrders } from "../order/order.service";
 import { OrderModel } from "../../models/order";
-//import { OrderDoc } from "../order/order.type";
-//import { handleExecutedOrder } from "../executedOrder/executedOrder.service";
 import { normalizeValue } from "../order/order.utils";
 import { SymbolConfigModel } from "../../models/symbolConfig";
 import { logAndSendToQueue } from "../lib/rabbit";
