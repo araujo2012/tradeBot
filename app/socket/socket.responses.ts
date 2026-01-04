@@ -1,9 +1,8 @@
 import { OrderModel } from "../../models/order";
-//import { handleExecutedOrder } from "../transaction/transaction.service";
-import { OrderDoc } from "../order/order.type";
-import { logAndSendToQueue } from "../lib/rabbit";
-import { SessionModel } from "../../models/session";
+import { BotOrderDocument, BotOrderModel } from "../../models/botOrder";
+import { BotModel } from "../../models/bot";
 import { logger } from "../lib/pino";
+import { createExecutedOrder } from "../order/order.service";
 
 export async function handlePlaceOrderResponse(response: any) {
   const { id, result } = response;
@@ -37,27 +36,85 @@ export async function handleExecutionReport(response: any) {
   if (!event) return;
 
   const { X: status, c: clientOrderId, C: cancelOrderId, z } = event;
+  let order = await BotOrderModel.findOne({
+    binanceId: { $in: [clientOrderId, cancelOrderId] },
+  });
+  if (!order) {
+    order = await OrderModel.findOne({
+      binanceId: { $in: [clientOrderId, cancelOrderId] },
+    });
+  }
+  if (!order) return;
+  const { mode } = order;
+  switch (mode) {
+    case "manager":
+      await handleExecutionReportManager({
+        status,
+        order,
+        executed: Number(z),
+      });
+      break;
+    case "administrator":
+      await handleExecutionReportAdministrator({
+        status,
+        order,
+        executed: Number(z),
+      });
+      break;
+    default:
+      break;
+  }
+}
+
+async function handleExecutionReportManager({
+  status,
+  order,
+  executed,
+}: {
+  status: string;
+  order: BotOrderDocument;
+  executed: number;
+}) {
+  try {
+    if (status === "NEW") return;
+    if (status === "CANCELED") {
+      //TODO
+    }
+    if (status === "PARTIALLY_FILLED") {
+      //TODO
+    }
+    if (status === "FILLED") {
+      const executedOrder = await createExecutedOrder(order);
+      const bot = BotModel.findOne({ _id: order.botId });
+      if (!bot) return;
+    }
+    return;
+  } catch (error) {
+    logger.error(error);
+  }
+}
+
+async function handleExecutionReportAdministrator({
+  status,
+  order,
+  executed,
+}: {
+  status: string;
+  order: BotOrderDocument;
+  executed: number;
+}) {
   if (status === "NEW") return;
   if (status === "CANCELED") {
-    const order = await OrderModel.findOne({ binanceId: cancelOrderId });
-    if (!order) {
-      logger.info({ response }, "Order nao encontrada");
-      return;
-    }
-    order.status = Number(z) > 0 ? "executed" : "closed";
+    order.status = executed > 0 ? "executed" : "closed";
     await order.save();
-    return;
-  }
-  const order = await OrderModel.findOne({ binanceId: clientOrderId });
-  if (!order) {
-    logger.info({ response }, "Order nao encontrada");
     return;
   }
   if (status === "FILLED" || status === "PARTIALLY_FILLED") {
-    order.executedQtd = Number(z);
+    order.executedQtd = executed;
     order.status = "executed";
     await order.save();
   }
+  return;
 }
 
 export async function handleErrors(response: any) {
