@@ -5,7 +5,7 @@ export interface OrderType {
   userId: Types.ObjectId;
   botId: Types.ObjectId;
   sessionId: Types.ObjectId;
-  mode: "administrator";
+  mode: "administrator" | "manager";
   symbol: string;
   price: number;
   quantity: number;

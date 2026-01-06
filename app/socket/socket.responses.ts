@@ -1,8 +1,7 @@
 import { OrderModel } from "../../models/order";
 import { BotOrderDocument, BotOrderModel } from "../../models/botOrder";
-import { BotModel } from "../../models/bot";
 import { logger } from "../lib/pino";
-import { createExecutedOrder } from "../order/order.service";
+import { logAndSendToQueue } from "../lib/rabbit";
 
 export async function handlePlaceOrderResponse(response: any) {
   const { id, result } = response;
@@ -75,23 +74,34 @@ async function handleExecutionReportManager({
   order: BotOrderDocument;
   executed: number;
 }) {
-  try {
-    if (status === "NEW") return;
-    if (status === "CANCELED") {
-      //TODO
-    }
-    if (status === "PARTIALLY_FILLED") {
-      //TODO
-    }
-    if (status === "FILLED") {
-      const executedOrder = await createExecutedOrder(order);
-      const bot = BotModel.findOne({ _id: order.botId });
-      if (!bot) return;
-    }
+  if (status === "NEW") return;
+  if (status === "CANCELED") {
+    order.status = executed > 0 ? "executed" : "closed";
+    await order.save();
     return;
-  } catch (error) {
-    logger.error(error);
   }
+  if (status === "PARTIALLY_FILLED") {
+    order.executedQtd = executed;
+    order.status = "executed";
+    await order.save();
+    await new Promise((resolve) => setTimeout(resolve, 60_000));
+    const message = {
+      action: "runManagerBot",
+      botId: order.botId,
+    };
+    logAndSendToQueue("socket", message);
+  }
+  if (status === "FILLED") {
+    order.executedQtd = executed;
+    order.status = "executed";
+    await order.save();
+    const message = {
+      action: "runManagerBot",
+      botId: order.botId,
+    };
+    logAndSendToQueue("socket", message);
+  }
+  return;
 }
 
 async function handleExecutionReportAdministrator({

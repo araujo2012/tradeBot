@@ -2,7 +2,7 @@ import { connectToRabbitMQ } from "../lib/rabbit";
 import { SessionModel } from "../../models/session";
 import { OrderDocument, OrderModel } from "../../models/order";
 import { BotModel } from "../../models/bot";
-import { botService } from "../bot/bot.service";
+import { startAdministrator } from "../bot/bot.service";
 import { SymbolConfigModel } from "../../models/symbolConfig";
 import {
   socketLogon,
@@ -57,7 +57,7 @@ async function handleStartSession(sessionId: string) {
     for (const bot of bots) {
       switch (bot.mode) {
         case "administrator":
-          await botService.startAdministrator(bot, apiKey);
+          await startAdministrator(bot, apiKey);
           break;
         default:
           break;

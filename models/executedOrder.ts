@@ -1,39 +1,23 @@
-import { directionList, intervalList } from "../app/order/order.constants";
-import { Schema, model } from "mongoose";
+import { directionList } from "../app/order/order.constants";
+import { Schema, model, HydratedDocument, Types } from "mongoose";
+import { OrderType } from "./order";
 
-export interface ExecutedOrder {
-  userId: string;
-  botId: string;
-  sessionId: string;
-  symbol: string;
-  price: number;
-  quantity: number;
-  entryQtd: number;
-  value: number;
-  interval: string;
-  direction: string;
-  binanceId: string;
-  clientId: string;
-  executedQtd: number;
-  status: string;
-  executedTime: Date;
-}
+export type ExecutedOrderDocument = HydratedDocument<OrderType>;
 
-const executedOrderSchema = new Schema(
+const executedOrderSchema = new Schema<OrderType>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     botId: { type: Schema.Types.ObjectId, ref: "Bot", required: true },
     sessionId: { type: Schema.Types.ObjectId, ref: "Session", required: true },
+    mode: {
+      type: String,
+      enum: ["administrator", "manager"],
+      required: true,
+    },
     symbol: { type: String, required: true },
     price: { type: Number, default: 0 },
     quantity: { type: Number, default: 0 },
-    entryQtd: { type: Number, default: 0 },
     value: { type: Number, default: 0 },
-    interval: {
-      type: String,
-      enum: intervalList,
-      required: true,
-    },
     direction: {
       type: String,
       enum: directionList,
@@ -44,13 +28,13 @@ const executedOrderSchema = new Schema(
     executedQtd: { type: Number, default: 0 },
     status: {
       type: String,
-      enum: ["NEW", "CREATED", "DONE"],
+      enum: ["active", "executed", "closed", "pending"],
       required: true,
-      default: "NEW",
+      default: "closed",
     },
-    executedTime: { type: Date },
+    position: { type: Number },
   },
   { timestamps: true }
 );
 
-export const ExecutedOrderModel = model("ExecutedOrder", executedOrderSchema);
+export const ExecutedOrderModel = model("Order", executedOrderSchema);
