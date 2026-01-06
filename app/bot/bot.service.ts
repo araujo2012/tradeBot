@@ -2,8 +2,9 @@ import { BotDocument, BotModel } from "../../models/bot";
 import { OrderModel } from "../../models/order";
 import { startBotJob } from "./bot.jobs";
 import { socketOrderStatus } from "../socket/socket.requests";
+import { ExecutedOrderDocument } from "models/executedOrder";
 
-async function startAdministrator(bot: BotDocument, apiKey: string) {
+export async function startAdministrator(bot: BotDocument, apiKey: string) {
   try {
     const { symbol, sessionId } = bot;
     const orders = await OrderModel.find({
@@ -41,6 +42,6 @@ async function startAdministrator(bot: BotDocument, apiKey: string) {
   }
 }
 
-export const botService = {
-  startAdministrator,
-};
+export async function updateBotByExecutedOrder(order: ExecutedOrderDocument) {
+  //TODO
+}

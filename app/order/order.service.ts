@@ -1,5 +1,6 @@
-import { BotOrderDocument } from "models/botOrder";
+import { BotOrderDocument } from "../../models/botOrder";
+import { ExecutedOrderModel } from "../../models/executedOrder";
 
-export function createExecutedOrder(order: BotOrderDocument) {
+export async function createExecutedOrder(order: BotOrderDocument) {
   //TODO
 }
