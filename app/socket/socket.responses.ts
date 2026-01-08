@@ -78,6 +78,11 @@ async function handleExecutionReportManager({
   if (status === "CANCELED") {
     order.status = executed > 0 ? "executed" : "closed";
     await order.save();
+    const message = {
+      action: "runManagerBot",
+      botId: order.botId,
+    };
+    logAndSendToQueue("socket", message);
     return;
   }
   if (status === "PARTIALLY_FILLED") {

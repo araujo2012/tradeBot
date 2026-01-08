@@ -16,7 +16,7 @@ import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
 import { OrderEntry } from "../order/order.type";
 import { normalizeValue } from "../order/order.utils";
-import { stopBotJob } from "../bot/bot.jobs";
+import { runManagerJob, stopBotJob } from "../bot/bot.jobs";
 import { logger } from "../lib/pino";
 
 // Rate limit: 5 mensagens por segundo
@@ -361,6 +361,9 @@ async function processQueue() {
           content.apiKey,
           content.binanceId
         );
+        break;
+      case "runManagerBot":
+        await runManagerJob(content.botId);
         break;
       default:
         console.warn("Unknown status:", content.action);

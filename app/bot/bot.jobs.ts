@@ -6,6 +6,7 @@ import { SymbolConfigModel } from "../../models/symbolConfig";
 import { logAndSendToQueue } from "../lib/rabbit";
 import { socketOrderStatus } from "../socket/socket.requests";
 import { logger } from "../lib/pino";
+import { handleRunManagerJobQueue } from "./bot.utils";
 const botStarting = new Set<string>();
 const botIntervals: Record<string, NodeJS.Timeout> = {};
 
@@ -288,6 +289,18 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
     default:
       break;
   }
+}
+
+export async function runManagerJob(botId: string) {
+  const canRun = await handleRunManagerJobQueue(botId);
+  if (!canRun) return;
+  //TODO handleRunManagerJobQueue
+  //TODO puxa as ordens ativas e executadas
+  //TODO se tiver ordem executada, atualiza o bot
+  //TODO calcula a variancia minima do bot
+  //TODO calcula a variancia por bolinger
+  //TODO calcula o valor da ordem de compra e venda
+  //TODO se nao tem ordem ativa, sobe a ordem, se tem ordem ativa chama funcao de atualizar a ordem
 }
 
 function generateNewOrdersAdministrator(

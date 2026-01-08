@@ -1,6 +1,9 @@
 import { Types } from "mongoose";
 import { intervalList, directionList } from "../order/order.constants";
 import { BotDocument } from "models/bot";
+import { redis } from "../lib/redis";
+import { sleep } from "../lib/sleep";
+import { logAndSendToQueue } from "../lib/rabbit";
 
 export function createOrderFromBot(bot: BotDocument) {
   return {
@@ -22,4 +25,55 @@ export function createOrderFromBot(bot: BotDocument) {
     lastExecutedTime: undefined,
     updateTime: undefined,
   };
+}
+
+export async function handleRunManagerJobQueue(botId: string) {
+  const redisKey = `bot:run:${botId}`;
+  const raw = await redis.get(redisKey);
+  if (!raw) {
+    await redis.setex(
+      redisKey,
+      60,
+      JSON.stringify({
+        isRunning: true,
+        hasQueue: 0,
+      })
+    );
+    return true;
+  }
+  const state = JSON.parse(raw);
+  if (state.isRunning === true) {
+    const nextQueue = (state.hasQueue || 0) + 1;
+
+    let delayMs = 10_000;
+    if (state.hasQueue === 1) delayMs = 30_000;
+    if (state.hasQueue > 1) delayMs = 60_000;
+
+    await redis.setex(
+      redisKey,
+      60,
+      JSON.stringify({
+        isRunning: true,
+        hasQueue: nextQueue,
+      })
+    );
+
+    await sleep(delayMs);
+
+    await logAndSendToQueue("socket", {
+      action: "runManagerBot",
+      botId,
+    });
+
+    return false;
+  }
+  await redis.setex(
+    redisKey,
+    60,
+    JSON.stringify({
+      isRunning: true,
+      hasQueue: 0,
+    })
+  );
+  return true;
 }
