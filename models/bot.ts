@@ -43,6 +43,9 @@ const botSchema = new Schema<BotDocument>(
       required: true,
       default: 0,
     },
+    lastExecutionTime: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

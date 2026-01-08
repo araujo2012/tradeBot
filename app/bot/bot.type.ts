@@ -11,6 +11,7 @@ export interface BotType {
   brl: number;
   crypto: number;
   target: number;
+  lastExecutionTime?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }

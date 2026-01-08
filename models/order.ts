@@ -14,7 +14,7 @@ export interface OrderType {
   binanceId: string;
   clientId: string;
   executedQtd: number;
-  status: "active" | "executed" | "closed" | "pending";
+  status: "active" | "executed" | "partialExecuted" | "closed" | "pending";
   position?: number;
 }
 

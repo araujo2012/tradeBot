@@ -1,4 +1,4 @@
-import { connectToRabbitMQ } from "../lib/rabbit";
+import { connectToRabbitMQ, logAndSendToQueue } from "../lib/rabbit";
 import { SessionModel } from "../../models/session";
 import { OrderDocument, OrderModel } from "../../models/order";
 import { BotModel } from "../../models/bot";
@@ -305,6 +305,9 @@ async function handleExecutedOrder(order: OrderDocument, result: any) {
     case "administrator":
       await handleExecutedOrderAdministrator(order, result);
       break;
+    case "manager":
+      await handleExecutedOrderManager(order, result);
+      break;
     default:
       break;
   }
@@ -319,6 +322,18 @@ async function handleExecutedOrderAdministrator(
   order.executedQtd = executed;
   order.status = "executed";
   await order.save();
+}
+
+async function handleExecutedOrderManager(order: OrderDocument, result: any) {
+  const executed = Number(result.executedQty);
+  const isFullyExecuted = order.quantity === executed;
+  order.executedQtd = executed;
+  order.status = isFullyExecuted ? "executed" : "partialExecuted";
+  await order.save();
+  logAndSendToQueue("socket", {
+    action: "runManagerBot",
+    botId: order.botId.toString(),
+  });
 }
 
 async function stopSessionBots(sessionId: string) {

@@ -1,4 +1,3 @@
-//import { SessionModel } from "../../models/session";
 import { BotDocument, BotModel } from "../../models/bot";
 import { OrderModel } from "../../models/order";
 import { normalizeValue } from "../order/order.utils";
@@ -7,6 +6,7 @@ import { logAndSendToQueue } from "../lib/rabbit";
 import { socketOrderStatus } from "../socket/socket.requests";
 import { logger } from "../lib/pino";
 import { handleRunManagerJobQueue } from "./bot.utils";
+import { SessionModel } from "models/session";
 const botStarting = new Set<string>();
 const botIntervals: Record<string, NodeJS.Timeout> = {};
 
@@ -294,8 +294,48 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
 export async function runManagerJob(botId: string) {
   const canRun = await handleRunManagerJobQueue(botId);
   if (!canRun) return;
-  //TODO handleRunManagerJobQueue
-  //TODO puxa as ordens ativas e executadas
+  const orders = await OrderModel.find({
+    botId,
+    status: { $in: ["active", "executed", "partialExecuted"] },
+  });
+  const bot = await BotModel.findOne({ _id: botId });
+  if (!bot) {
+    logger.error(`${botId} nao encontrado`);
+    return;
+  }
+  const session = await SessionModel.findOne({
+    _id: bot.sessionId.toString(),
+  }).lean();
+  const executedOrders = orders.filter((order) => order.executedQtd > 0);
+  if (executedOrders.length > 0) {
+    let stopRun = false;
+    executedOrders.forEach(async (order) => {
+      const isFullyExecuted = order.quantity === order.executedQtd;
+      if (isFullyExecuted || order.status === "partialExecuted") {
+        bot.crypto +=
+          order.direction === "buy"
+            ? order.executedQtd
+            : -1 * order.executedQtd;
+        order.status = "closed";
+        await order.save();
+      } else {
+        const message = {
+          action: "cancelOrder",
+          payload: {
+            apiKey: session?.apiKey,
+            origClientOrderId: order.binanceId,
+            symbol: bot.symbol,
+            sessionId: bot.sessionId.toString(),
+          },
+        };
+        logAndSendToQueue("socket", message);
+        stopRun = true;
+      }
+    });
+    bot.lastExecutionTime = new Date();
+    await bot.save();
+    if (stopRun) return;
+  }
   //TODO se tiver ordem executada, atualiza o bot
   //TODO calcula a variancia minima do bot
   //TODO calcula a variancia por bolinger
