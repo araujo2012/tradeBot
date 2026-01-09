@@ -4,6 +4,7 @@ import { BotDocument } from "models/bot";
 import { redis } from "../lib/redis";
 import { sleep } from "../lib/sleep";
 import { logAndSendToQueue } from "../lib/rabbit";
+import { SymbolConfigModel } from "models/symbolConfig";
 
 export function createOrderFromBot(bot: BotDocument) {
   return {
@@ -76,4 +77,12 @@ export async function handleRunManagerJobQueue(botId: string) {
     })
   );
   return true;
+}
+
+export async function getMinVarianceBot(symbol: string, money: number) {
+  const config = await SymbolConfigModel.findOne({ symbol }).lean();
+  const aboveTax = 0.001 * 4;
+  if (!config) return aboveTax;
+  const { priceDecimal, qtdDecimal, minValue } = config;
+  return Math.max(minValue / money, aboveTax);
 }

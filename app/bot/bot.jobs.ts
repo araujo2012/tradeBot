@@ -5,8 +5,9 @@ import { SymbolConfigModel } from "../../models/symbolConfig";
 import { logAndSendToQueue } from "../lib/rabbit";
 import { socketOrderStatus } from "../socket/socket.requests";
 import { logger } from "../lib/pino";
-import { handleRunManagerJobQueue } from "./bot.utils";
+import { getMinVarianceBot, handleRunManagerJobQueue } from "./bot.utils";
 import { SessionModel } from "models/session";
+import { calculateBollLimits } from "../limits/limits.service";
 const botStarting = new Set<string>();
 const botIntervals: Record<string, NodeJS.Timeout> = {};
 
@@ -307,6 +308,7 @@ export async function runManagerJob(botId: string) {
     _id: bot.sessionId.toString(),
   }).lean();
   const executedOrders = orders.filter((order) => order.executedQtd > 0);
+  //handleExecutedOrders
   if (executedOrders.length > 0) {
     let stopRun = false;
     executedOrders.forEach(async (order) => {
@@ -336,9 +338,18 @@ export async function runManagerJob(botId: string) {
     await bot.save();
     if (stopRun) return;
   }
-  //TODO se tiver ordem executada, atualiza o bot
-  //TODO calcula a variancia minima do bot
-  //TODO calcula a variancia por bolinger
+  //set variance
+  const minVariance = await getMinVarianceBot(bot.symbol, bot.target);
+  const { upperLimit, lowerLimit } = await calculateBollLimits({
+    symbol: bot.symbol,
+    interval: "1h",
+    period: 21,
+    width: 2.1,
+  });
+  const variance = Math.max(
+    minVariance,
+    (upperLimit - lowerLimit) / (upperLimit + lowerLimit)
+  );
   //TODO calcula o valor da ordem de compra e venda
   //TODO se nao tem ordem ativa, sobe a ordem, se tem ordem ativa chama funcao de atualizar a ordem
 }
