@@ -1,11 +1,15 @@
 import { BotDocument, BotModel } from "../../models/bot";
 import { OrderModel } from "../../models/order";
 import { normalizeValue } from "../order/order.utils";
-import { SymbolConfigModel } from "../../models/symbolConfig";
+import { SymbolConfigModel, SymbolConfigType } from "../../models/symbolConfig";
 import { logAndSendToQueue } from "../lib/rabbit";
 import { socketOrderStatus } from "../socket/socket.requests";
 import { logger } from "../lib/pino";
-import { getMinVarianceBot, handleRunManagerJobQueue } from "./bot.utils";
+import {
+  finishRunManagerJobQueue,
+  getMinVarianceBot,
+  handleRunManagerJobQueue,
+} from "./bot.utils";
 import { SessionModel } from "models/session";
 import { calculateBollLimits } from "../limits/limits.service";
 const botStarting = new Set<string>();
@@ -293,6 +297,7 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
 }
 
 export async function runManagerJob(botId: string) {
+  //Limita a uma exececucao por vez
   const canRun = await handleRunManagerJobQueue(botId);
   if (!canRun) return;
   const orders = await OrderModel.find({
@@ -302,6 +307,7 @@ export async function runManagerJob(botId: string) {
   const bot = await BotModel.findOne({ _id: botId });
   if (!bot) {
     logger.error(`${botId} nao encontrado`);
+    await finishRunManagerJobQueue(botId);
     return;
   }
   const session = await SessionModel.findOne({
@@ -336,29 +342,194 @@ export async function runManagerJob(botId: string) {
     });
     bot.lastExecutionTime = new Date();
     await bot.save();
-    if (stopRun) return;
+    if (stopRun) {
+      await finishRunManagerJobQueue(botId);
+      return;
+    }
   }
   //set variance
-  const minVariance = await getMinVarianceBot(bot.symbol, bot.target);
-  const { upperLimit, lowerLimit } = await calculateBollLimits({
+  const symbolConfig = await SymbolConfigModel.findOne({ symbol: bot.symbol });
+  if (!symbolConfig) {
+    await finishRunManagerJobQueue(botId);
+    return;
+  }
+  const variance = await setVarianceManager({
+    symbolConfig,
     symbol: bot.symbol,
+    target: bot.target,
+  });
+  const { buyOrder, sellOrder } = generateNewOrdersManager({
+    variance,
+    target: bot.target,
+    crypto: bot.crypto,
+    symbolConfig,
+  });
+  await handleOperationManager({
+    botId,
+    direction: "buy",
+    newOrder: buyOrder,
+    symbol: bot.symbol,
+    apiKey: session?.apiKey || "",
+    qtdDecimal: symbolConfig.qtdDecimal,
+  });
+  await handleOperationManager({
+    botId,
+    direction: "sell",
+    newOrder: sellOrder,
+    symbol: bot.symbol,
+    apiKey: session?.apiKey || "",
+    qtdDecimal: symbolConfig.qtdDecimal,
+  });
+  await finishRunManagerJobQueue(botId);
+}
+
+async function handleOperationManager({
+  botId,
+  direction,
+  newOrder,
+  symbol,
+  apiKey,
+  qtdDecimal,
+}: {
+  botId: string;
+  direction: string;
+  newOrder: {
+    direction: string;
+    quantity: number;
+    price: number;
+  };
+  symbol: string;
+  apiKey: string;
+  qtdDecimal: number;
+}) {
+  const order = await OrderModel.findOne({
+    botId,
+    direction,
+    status: "active",
+  });
+  if (!order) {
+    const message = {
+      action: "createOrder",
+      payload: {
+        botId,
+        mode: "manager",
+        direction: direction,
+        price: newOrder.price,
+        quantity: newOrder.quantity,
+        symbol,
+      },
+      apiKey,
+    };
+    logAndSendToQueue("socket", message);
+    return;
+  }
+  const qtyDiff = Math.abs(newOrder.quantity - order.quantity);
+  const priceDiffPercent = Math.abs(newOrder.price - order.price) / order.price;
+  if (qtyDiff > qtdDecimal || priceDiffPercent > 0.001) {
+    const message = {
+      action: "replaceOrder",
+      payload: {
+        botId,
+        mode: "manager",
+        direction,
+        price: newOrder.price,
+        quantity: newOrder.quantity,
+        symbol,
+      },
+      apiKey,
+      binanceId: order.binanceId,
+    };
+    logAndSendToQueue("socket", message);
+    return;
+  }
+}
+
+async function setVarianceManager({
+  symbolConfig,
+  symbol,
+  target,
+}: {
+  symbolConfig: SymbolConfigType;
+  symbol: string;
+  target: number;
+}) {
+  const minVariance = await getMinVarianceBot(symbolConfig.minValue, target);
+  const { upperLimit, lowerLimit } = await calculateBollLimits({
+    symbol: symbol,
     interval: "1h",
     period: 21,
     width: 2.1,
   });
-  const variance = Math.max(
+  return Math.max(
     minVariance,
     (upperLimit - lowerLimit) / (upperLimit + lowerLimit)
   );
-  //TODO calcula o valor da ordem de compra e venda
-  //TODO se nao tem ordem ativa, sobe a ordem, se tem ordem ativa chama funcao de atualizar a ordem
+}
+
+function generateNewOrdersManager({
+  variance,
+  target,
+  crypto,
+  symbolConfig,
+}: {
+  variance: number;
+  target: number;
+  crypto: number;
+  symbolConfig: SymbolConfigType;
+}) {
+  const moneyDif = variance * target;
+  const sellPrice = (target + moneyDif) / crypto;
+  const buyPrice = (target - moneyDif) / crypto;
+  const sellQuantity = normalizeValue({
+    value: moneyDif / sellPrice,
+    decimal: symbolConfig.qtdDecimal,
+    isRoundUp: false,
+  });
+  const buyQuantity = normalizeValue({
+    value: moneyDif / buyPrice,
+    decimal: symbolConfig.qtdDecimal,
+    isRoundUp: false,
+  });
+  const sellOrder = {
+    direction: "sell",
+    quantity: sellQuantity,
+    price: normalizeValue({
+      value: sellPrice,
+      decimal: symbolConfig.priceDecimal,
+      isRoundUp: true,
+    }),
+  };
+  const buyOrder = {
+    direction: "buy",
+    quantity: buyQuantity,
+    price: normalizeValue({
+      value: buyPrice,
+      decimal: symbolConfig.priceDecimal,
+      isRoundUp: false,
+    }),
+  };
+  if (sellOrder.quantity * sellOrder.price < symbolConfig.minValue) {
+    sellOrder.quantity = normalizeValue({
+      value: moneyDif / sellPrice,
+      decimal: symbolConfig.qtdDecimal,
+      isRoundUp: true,
+    });
+  }
+  if (buyOrder.quantity * buyOrder.price < symbolConfig.minValue) {
+    buyOrder.quantity = normalizeValue({
+      value: moneyDif / buyPrice,
+      decimal: symbolConfig.qtdDecimal,
+      isRoundUp: true,
+    });
+  }
+  return { sellOrder, buyOrder };
 }
 
 function generateNewOrdersAdministrator(
   crypto: number,
   target: number,
   variance: number,
-  symbolConfig: any
+  symbolConfig: SymbolConfigType
 ) {
   const buyOrders: {
     direction: "buy";

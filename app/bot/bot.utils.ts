@@ -79,10 +79,25 @@ export async function handleRunManagerJobQueue(botId: string) {
   return true;
 }
 
-export async function getMinVarianceBot(symbol: string, money: number) {
-  const config = await SymbolConfigModel.findOne({ symbol }).lean();
+export async function finishRunManagerJobQueue(botId: string) {
+  const redisKey = `bot:run:${botId}`;
+
+  const raw = await redis.get(redisKey);
+  if (!raw) return;
+
+  const state = JSON.parse(raw);
+
+  await redis.setex(
+    redisKey,
+    60,
+    JSON.stringify({
+      isRunning: false,
+      hasQueue: state.hasQueue || 0,
+    })
+  );
+}
+
+export async function getMinVarianceBot(minValue: number, money: number) {
   const aboveTax = 0.001 * 4;
-  if (!config) return aboveTax;
-  const { priceDecimal, qtdDecimal, minValue } = config;
   return Math.max(minValue / money, aboveTax);
 }
