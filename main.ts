@@ -6,6 +6,7 @@ import { createServer } from "http";
 import { initializeWebSocketServer } from "./websocket";
 import { bootstrap } from "./app/lib/bootstrap";
 import { startPingMonitor } from "./app/socket/socket.main";
+import { startAgenda } from "./app/jobs";
 
 const PORT = process.env.PORT || 3001;
 
@@ -15,6 +16,7 @@ const PORT = process.env.PORT || 3001;
     await connectToDatabase();
     startSocketConsumer();
     startPingMonitor();
+    startAgenda();
 
     // Executa o bootstrap, mas não bloqueia o start do servidor
     bootstrap().catch((err) => {
