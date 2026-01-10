@@ -117,6 +117,7 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
   const symbolConfig = await SymbolConfigModel.findOne({
     symbol: bot.symbol,
   }).lean();
+  if (!symbolConfig) return;
   const [buyOrders, sellOrders] = generateNewOrdersAdministrator(
     crypto,
     bot.target,
