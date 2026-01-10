@@ -319,7 +319,9 @@ async function handleExecutedOrderAdministrator(
   result: any
 ) {
   const executed = Number(result.executedQty);
-  order.executedQtd = executed;
+  if (executed > order.executedQtd) {
+    order.executedQtd = executed;
+  }
   order.status = "executed";
   await order.save();
 }
@@ -327,7 +329,9 @@ async function handleExecutedOrderAdministrator(
 async function handleExecutedOrderManager(order: OrderDocument, result: any) {
   const executed = Number(result.executedQty);
   const isFullyExecuted = order.quantity === executed;
-  order.executedQtd = executed;
+  if (executed > order.executedQtd) {
+    order.executedQtd = executed;
+  }
   order.status = isFullyExecuted ? "executed" : "partialExecuted";
   await order.save();
   logAndSendToQueue("socket", {
@@ -338,7 +342,6 @@ async function handleExecutedOrderManager(order: OrderDocument, result: any) {
 
 async function stopSessionBots(sessionId: string) {
   const bots = await BotModel.find({ sessionId, status: "active" });
-
   for (const bot of bots) {
     try {
       stopBotJob(bot._id.toString());
