@@ -325,11 +325,10 @@ async function handleExecutedOrderAdministrator(
 
 async function handleExecutedOrderManager(order: OrderDocument, result: any) {
   const executed = Number(result.executedQty);
-  const isFullyExecuted = order.quantity === executed;
   if (executed > order.executedQtd) {
     order.executedQtd = executed;
   }
-  order.status = isFullyExecuted ? "executed" : "partialExecuted";
+  order.status = "executed";
   await order.save();
 }
 
