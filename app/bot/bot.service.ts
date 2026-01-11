@@ -2,14 +2,15 @@ import { BotDocument, BotModel } from "../../models/bot";
 import { OrderModel } from "../../models/order";
 import { startBotJob } from "./bot.jobs";
 import { socketOrderStatus } from "../socket/socket.requests";
-import { ExecutedOrderDocument } from "models/executedOrder";
+import { activeStatus } from "../order/order.constants";
+import { logAndSendToQueue } from "app/lib/rabbit";
 
 export async function startAdministrator(bot: BotDocument, apiKey: string) {
   try {
     const { symbol, sessionId } = bot;
     const orders = await OrderModel.find({
       botId: bot._id,
-      status: { $in: ["active", "executed"] },
+      status: { $in: activeStatus },
     });
     const promises = orders.map((order) =>
       socketOrderStatus({
@@ -42,6 +43,43 @@ export async function startAdministrator(bot: BotDocument, apiKey: string) {
   }
 }
 
-export async function updateBotByExecutedOrder(order: ExecutedOrderDocument) {
-  //TODO
+export async function startManager(bot: BotDocument, apiKey: string) {
+  try {
+    const { symbol, sessionId } = bot;
+    const orders = await OrderModel.find({
+      botId: bot._id,
+      status: { $in: activeStatus },
+    });
+    const promises = orders.map((order) =>
+      socketOrderStatus({
+        apiKey,
+        origClientOrderId: order.binanceId,
+        symbol,
+        sessionId: sessionId.toString(),
+      })
+    );
+    const results = await Promise.all(promises);
+    results.forEach(async (result) => {
+      const order = orders.find(
+        (order) => order.binanceId === result.result.clientOrderId
+      );
+      if (!order) return;
+      const executedQtd = Number(result.result.executedQty);
+      if (executedQtd > order.executedQtd) {
+        order.executedQtd = executedQtd;
+      } else return;
+      if (order.executedQtd > 0) {
+        order.status = "executed";
+      }
+      await order.save();
+    });
+    logAndSendToQueue("socket", {
+      action: "runManagerBot",
+      botId: bot._id.toString(),
+    });
+  } catch (error) {
+    bot.status = "error";
+    bot.save();
+    console.log("[startAdministrator] - ", error);
+  }
 }
