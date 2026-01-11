@@ -40,9 +40,10 @@ export async function handleRunManagerJobQueue(
   const lockKey = `bot:lock:${normalizedBotId}`;
   const delayKey = `bot:delay:${normalizedBotId}`;
   const lock = await redis.set(lockKey, "1", "EX", 60, "NX");
-  console.log(normalizedBotId);
+  const b = await redis.set(lockKey, "1", "EX", 60, "NX");
   console.log("ISO:", new Date().toISOString());
-  console.log(lock);
+  JSON.stringify(lockKey);
+  console.log({ lock, b });
   if (lock === "OK") {
     await redis.del(delayKey);
     return true;
