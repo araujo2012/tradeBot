@@ -36,6 +36,10 @@ function normalizeBotId(botId: string | Types.ObjectId): string {
 export async function handleRunManagerJobQueue(
   botId: string
 ): Promise<boolean> {
+  const randomDelayMs = Math.floor(Math.random() * 5000);
+  if (randomDelayMs > 0) {
+    await sleep(randomDelayMs);
+  }
   const normalizedBotId = normalizeBotId(botId);
   const lockKey = `bot:lock:${normalizedBotId}`;
   const delayKey = `bot:delay:${normalizedBotId}`;
