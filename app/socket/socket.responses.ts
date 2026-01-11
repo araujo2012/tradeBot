@@ -33,7 +33,7 @@ export async function handleExecutionReport(response: any) {
   if (!event) return;
   const { X: status, c: clientOrderId, C: cancelOrderId, z } = event;
   const order = await OrderModel.findOne({
-    binanceId: { $in: [clientOrderId, cancelOrderId] },
+    binanceId: status === "CANCELED" ? cancelOrderId : clientOrderId,
   });
   if (!order) return;
   const { mode } = order;
