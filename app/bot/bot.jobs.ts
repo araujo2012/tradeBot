@@ -10,7 +10,7 @@ import {
   getMinVarianceBot,
   handleRunManagerJobQueue,
 } from "./bot.utils";
-import { SessionModel } from "models/session";
+import { SessionModel } from "../../models/session";
 import { calculateBollLimits } from "../limits/limits.service";
 import { activeStatus } from "../order/order.constants";
 const botStarting = new Set<string>();

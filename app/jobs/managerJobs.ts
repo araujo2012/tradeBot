@@ -1,7 +1,7 @@
 import { agenda } from "../lib/agenda";
-import { SessionModel } from "models/session";
-import { BotModel } from "models/bot";
-import { OrderModel } from "models/order";
+import { SessionModel } from "../../models/session";
+import { BotModel } from "../../models/bot";
+import { OrderModel } from "../../models/order";
 import { logAndSendToQueue } from "../lib/rabbit";
 
 export const CHECK_BUY_SELL = "checkBuyAndSellOrder";

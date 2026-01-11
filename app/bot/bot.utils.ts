@@ -1,10 +1,9 @@
 import { Types } from "mongoose";
 import { intervalList, directionList } from "../order/order.constants";
-import { BotDocument } from "models/bot";
+import { BotDocument } from "../../models/bot";
 import { redis } from "../lib/redis";
 import { sleep } from "../lib/sleep";
 import { logAndSendToQueue } from "../lib/rabbit";
-import { SymbolConfigModel } from "models/symbolConfig";
 
 export function createOrderFromBot(bot: BotDocument) {
   return {
