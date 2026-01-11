@@ -67,7 +67,13 @@ export async function startManager(bot: BotDocument, apiKey: string) {
       const executedQtd = Number(result.result.executedQty);
       if (executedQtd > order.executedQtd) {
         order.executedQtd = executedQtd;
-      } else return;
+      } else {
+        logAndSendToQueue("socket", {
+          action: "runManagerBot",
+          botId: bot._id.toString(),
+        });
+        return;
+      }
       if (order.executedQtd > 0) {
         order.status = "executed";
       }
