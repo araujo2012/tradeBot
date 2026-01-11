@@ -36,21 +36,17 @@ function normalizeBotId(botId: string | Types.ObjectId): string {
 export async function handleRunManagerJobQueue(
   botId: string
 ): Promise<boolean> {
-  const randomDelayMs = Math.floor(Math.random() * 5000);
-  if (randomDelayMs > 0) {
-    await sleep(randomDelayMs);
-  }
   const normalizedBotId = normalizeBotId(botId);
-  console.log(normalizedBotId);
-  console.log("ISO:", new Date().toISOString());
   const lockKey = `bot:lock:${normalizedBotId}`;
   const delayKey = `bot:delay:${normalizedBotId}`;
   const lock = await redis.set(lockKey, "1", "EX", 60, "NX");
+  console.log(normalizedBotId);
+  console.log("ISO:", new Date().toISOString());
+  console.log(lock);
   if (lock === "OK") {
     await redis.del(delayKey);
     return true;
   }
-  console.log(lockKey);
   const queue = await redis.incr(delayKey);
   await redis.expire(delayKey, 120);
   let delayMs = 10_000;
