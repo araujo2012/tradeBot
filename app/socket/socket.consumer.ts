@@ -18,6 +18,7 @@ import { OrderEntry } from "../order/order.type";
 import { normalizeValue } from "../order/order.utils";
 import { runManagerJob, stopBotJob } from "../bot/bot.jobs";
 import { logger } from "../lib/pino";
+import { decrementManagerInFlight } from "../bot/bot.utils";
 
 // Rate limit: 5 mensagens por segundo
 const RATE_LIMIT = 5;
@@ -141,7 +142,7 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
     if (status !== 200) {
       logger.info("status !== 200: ", result);
     }
-
+    await decrementManagerInFlight(order.botId.toString());
     if (result?.status === "NEW") {
       savedOrder.status = "active";
       savedOrder.binanceId = result.clientOrderId || "";
@@ -184,6 +185,7 @@ async function handleCancelOrder({
         order.status = "closed";
         await order.save();
       }
+      await decrementManagerInFlight(order.botId.toString());
       logAndSendToQueue("socket", {
         action: "runManagerBot",
         botId: order.botId.toString(),
@@ -291,6 +293,11 @@ async function handleReplaceOrder(
         handleExecutedOrder(newOrder, result?.result);
       }
     }
+    await decrementManagerInFlight(order.botId.toString());
+    logAndSendToQueue("socket", {
+      action: "runManagerBot",
+      botId: order.botId.toString(),
+    });
   } catch (err) {
     console.error("Error creating order:", err);
     throw err;

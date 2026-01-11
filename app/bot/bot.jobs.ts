@@ -6,9 +6,11 @@ import { logAndSendToQueue } from "../lib/rabbit";
 import { socketOrderStatus } from "../socket/socket.requests";
 import { logger } from "../lib/pino";
 import {
+  decrementManagerInFlight,
   finishRunManagerJobQueue,
   getMinVarianceBot,
   handleRunManagerJobQueue,
+  incrementManagerInFlight,
 } from "./bot.utils";
 import { SessionModel } from "../../models/session";
 import { calculateBollLimits } from "../limits/limits.service";
@@ -355,7 +357,7 @@ export async function runManagerJob(botId: string) {
   } catch (err) {
     logger.error(`runManagerJob error ${err}`);
   } finally {
-    await finishRunManagerJobQueue(botId);
+    await decrementManagerInFlight(botId);
   }
 }
 
@@ -381,6 +383,7 @@ async function handleExecutedOrdersManager({
       order.status = "closed";
       await order.save();
     } else {
+      await incrementManagerInFlight(bot._id.toString());
       logAndSendToQueue("socket", {
         action: "cancelOrder",
         payload: {
@@ -433,6 +436,7 @@ async function handleOperationManager({
       },
       apiKey,
     };
+    await incrementManagerInFlight(botId);
     logAndSendToQueue("socket", message);
     return;
   }
@@ -452,6 +456,7 @@ async function handleOperationManager({
       apiKey,
       binanceId: order.binanceId,
     };
+    await incrementManagerInFlight(botId);
     logAndSendToQueue("socket", message);
     return;
   }
