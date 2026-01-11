@@ -50,6 +50,7 @@ export async function handleRunManagerJobQueue(
     await redis.del(delayKey);
     return true;
   }
+  console.log(lockKey);
   const queue = await redis.incr(delayKey);
   await redis.expire(delayKey, 120);
   let delayMs = 10_000;
