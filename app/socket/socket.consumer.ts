@@ -29,6 +29,7 @@ const restartingSessions = new Set<string>();
 
 // Função para processar startSession
 async function handleStartSession(sessionId: string) {
+  console.log("iniciando sessao: ", sessionId);
   const session = await SessionModel.findById(sessionId);
   if (!session) throw new Error(`Session not found: ${sessionId}`);
   const { apiKey, userId } = session;
@@ -47,7 +48,9 @@ async function handleStartSession(sessionId: string) {
     session.status = "active";
     await session.save();
 
-    logger.info(`Session ${sessionId} started for user ${sessionId}`);
+    logger.info(
+      `Session ${sessionId} started for user ${session.userId.toString()}`
+    );
     sendToUser(userId.toString(), {
       type: "session",
       status: "active",
