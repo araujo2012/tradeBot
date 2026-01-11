@@ -98,13 +98,15 @@ agenda.define(
   RUN_MANAGER_BOTS,
   {
     concurrency: 1,
-    lockLifetime: 8 * 60 * 1000,
+    lockLifetime: 2 * 60 * 1000,
   },
   async () => {
     const sessions = await SessionModel.find({ status: "active" })
       .select("_id")
       .lean();
+
     if (!sessions.length) return;
+
     const bots = await BotModel.find({
       sessionId: { $in: sessions.map((s) => s._id) },
       status: "active",
@@ -112,11 +114,14 @@ agenda.define(
     })
       .select("_id")
       .lean();
+
     for (const bot of bots) {
-      logAndSendToQueue("socket", {
-        action: "runManagerBot",
-        botId: bot._id.toString(),
-      });
+      if (Math.random() <= 0.1) {
+        logAndSendToQueue("socket", {
+          action: "runManagerBot",
+          botId: bot._id.toString(),
+        });
+      }
     }
   }
 );
