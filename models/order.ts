@@ -45,7 +45,7 @@ const orderSchema = new Schema<OrderType>(
     executedQtd: { type: Number, default: 0 },
     status: {
       type: String,
-      enum: ["active", "executed", "closed", "pending"],
+      enum: ["active", "executed", "partialExecuted", "closed", "pending"],
       required: true,
       default: "closed",
     },
