@@ -298,90 +298,101 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
 }
 
 export async function runManagerJob(botId: string) {
-  //Limita a uma exececucao por vez
   const canRun = await handleRunManagerJobQueue(botId);
   if (!canRun) return;
-  const orders = await OrderModel.find({
-    botId,
-    status: { $in: ["active", "executed", "partialExecuted"] },
-  });
-  const bot = await BotModel.findOne({ _id: botId });
-  if (!bot) {
-    logger.error(`${botId} nao encontrado`);
-    await finishRunManagerJobQueue(botId);
-    return;
-  }
-  const session = await SessionModel.findOne({
-    _id: bot.sessionId.toString(),
-  }).lean();
-  const executedOrders = orders.filter((order) => order.executedQtd > 0);
-  //handleExecutedOrders
-  if (executedOrders.length > 0) {
-    let stopRun = false;
-    executedOrders.forEach(async (order) => {
-      const isFullyExecuted = order.quantity === order.executedQtd;
-      if (isFullyExecuted || order.status === "partialExecuted") {
-        bot.crypto +=
-          order.direction === "buy"
-            ? order.executedQtd
-            : -1 * order.executedQtd;
-        order.status = "closed";
-        await order.save();
-      } else {
-        const message = {
-          action: "cancelOrder",
-          payload: {
-            apiKey: session?.apiKey,
-            origClientOrderId: order.binanceId,
-            symbol: bot.symbol,
-            sessionId: bot.sessionId.toString(),
-          },
-        };
-        logAndSendToQueue("socket", message);
-        stopRun = true;
-      }
+  try {
+    const bot = await BotModel.findById(botId);
+    if (!bot || bot.status !== "active") return;
+    const session = await SessionModel.findById(bot.sessionId).lean();
+    if (!session || session.status !== "active") return;
+    const orders = await OrderModel.find({
+      botId,
+      status: { $in: ["active", "executed", "partialExecuted"] },
     });
-    bot.lastExecutionTime = new Date();
-    await bot.save();
-    if (stopRun) {
-      await finishRunManagerJobQueue(botId);
-      return;
+    const { stopRun, cryptoDelta } = await handleExecutedOrdersManager({
+      bot,
+      orders,
+      session,
+    });
+    if (cryptoDelta !== 0) {
+      bot.crypto += cryptoDelta;
+      bot.lastExecutionTime = new Date();
+      await bot.save();
+    }
+    if (stopRun) return;
+    const symbolConfig = await SymbolConfigModel.findOne({
+      symbol: bot.symbol,
+    });
+    if (!symbolConfig) return;
+    const variance = await setVarianceManager({
+      symbolConfig,
+      symbol: bot.symbol,
+      target: bot.target,
+    });
+    const { buyOrder, sellOrder } = generateNewOrdersManager({
+      variance,
+      target: bot.target,
+      crypto: bot.crypto,
+      symbolConfig,
+    });
+    await handleOperationManager({
+      botId,
+      direction: "buy",
+      newOrder: buyOrder,
+      symbol: bot.symbol,
+      apiKey: session.apiKey,
+      qtdDecimal: symbolConfig.qtdDecimal,
+    });
+    await handleOperationManager({
+      botId,
+      direction: "sell",
+      newOrder: sellOrder,
+      symbol: bot.symbol,
+      apiKey: session.apiKey,
+      qtdDecimal: symbolConfig.qtdDecimal,
+    });
+  } catch (err) {
+    logger.error("runManagerJob error", err);
+  } finally {
+    await finishRunManagerJobQueue(botId);
+  }
+}
+
+async function handleExecutedOrdersManager({
+  bot,
+  orders,
+  session,
+}: {
+  bot: any;
+  orders: any[];
+  session: { apiKey: string };
+}): Promise<{ stopRun: boolean; cryptoDelta: number }> {
+  let cryptoDelta = 0;
+  const executedOrders = orders.filter((o) => o.executedQtd > 0);
+  if (!executedOrders.length) {
+    return { stopRun: false, cryptoDelta: 0 };
+  }
+  for (const order of executedOrders) {
+    const isFullyExecuted = order.quantity === order.executedQtd;
+    if (isFullyExecuted || order.status === "partialExecuted") {
+      cryptoDelta +=
+        order.direction === "buy" ? order.executedQtd : -order.executedQtd;
+      order.status = "closed";
+      await order.save();
+    } else {
+      logAndSendToQueue("socket", {
+        action: "cancelOrder",
+        payload: {
+          apiKey: session.apiKey,
+          origClientOrderId: order.binanceId,
+          symbol: bot.symbol,
+          sessionId: bot.sessionId.toString(),
+        },
+      });
+      return { stopRun: true, cryptoDelta };
     }
   }
-  //set variance
-  const symbolConfig = await SymbolConfigModel.findOne({ symbol: bot.symbol });
-  if (!symbolConfig) {
-    await finishRunManagerJobQueue(botId);
-    return;
-  }
-  const variance = await setVarianceManager({
-    symbolConfig,
-    symbol: bot.symbol,
-    target: bot.target,
-  });
-  const { buyOrder, sellOrder } = generateNewOrdersManager({
-    variance,
-    target: bot.target,
-    crypto: bot.crypto,
-    symbolConfig,
-  });
-  await handleOperationManager({
-    botId,
-    direction: "buy",
-    newOrder: buyOrder,
-    symbol: bot.symbol,
-    apiKey: session?.apiKey || "",
-    qtdDecimal: symbolConfig.qtdDecimal,
-  });
-  await handleOperationManager({
-    botId,
-    direction: "sell",
-    newOrder: sellOrder,
-    symbol: bot.symbol,
-    apiKey: session?.apiKey || "",
-    qtdDecimal: symbolConfig.qtdDecimal,
-  });
-  await finishRunManagerJobQueue(botId);
+  return { stopRun: false, cryptoDelta };
 }
 
 async function handleOperationManager({

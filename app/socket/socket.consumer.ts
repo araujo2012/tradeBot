@@ -181,6 +181,10 @@ async function handleCancelOrder({
         order.status = "closed";
         await order.save();
       }
+      logAndSendToQueue("socket", {
+        action: "runManagerBot",
+        botId: order.botId.toString(),
+      });
     }
     logger.info({ result });
   } catch (err) {
@@ -334,10 +338,6 @@ async function handleExecutedOrderManager(order: OrderDocument, result: any) {
   }
   order.status = isFullyExecuted ? "executed" : "partialExecuted";
   await order.save();
-  logAndSendToQueue("socket", {
-    action: "runManagerBot",
-    botId: order.botId.toString(),
-  });
 }
 
 async function stopSessionBots(sessionId: string) {
