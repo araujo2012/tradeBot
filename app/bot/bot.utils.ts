@@ -62,7 +62,7 @@ export async function handleRunManagerJobQueue(botId: string) {
 
     await logAndSendToQueue("socket", {
       action: "runManagerBot",
-      botId,
+      botId: botId.toString(),
     });
 
     return false;
