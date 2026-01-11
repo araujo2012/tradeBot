@@ -1,5 +1,4 @@
-import { OrderModel } from "../../models/order";
-import { BotOrderDocument, BotOrderModel } from "../../models/botOrder";
+import { OrderModel, OrderDocument } from "../../models/order";
 import { logger } from "../lib/pino";
 import { logAndSendToQueue } from "../lib/rabbit";
 
@@ -14,7 +13,6 @@ export async function handlePlaceOrderResponse(response: any) {
   if (order) {
     order.binanceId = clientOrderId;
     if (status === "NEW" && order.status === "pending") {
-      order.binanceId = clientOrderId;
       order.status = "active";
       await order.save();
     }
@@ -33,16 +31,10 @@ export async function handlePlaceOrderResponse(response: any) {
 export async function handleExecutionReport(response: any) {
   const event = response?.event;
   if (!event) return;
-
   const { X: status, c: clientOrderId, C: cancelOrderId, z } = event;
-  let order = await BotOrderModel.findOne({
+  const order = await OrderModel.findOne({
     binanceId: { $in: [clientOrderId, cancelOrderId] },
   });
-  if (!order) {
-    order = await OrderModel.findOne({
-      binanceId: { $in: [clientOrderId, cancelOrderId] },
-    });
-  }
   if (!order) return;
   const { mode } = order;
   switch (mode) {
@@ -71,7 +63,7 @@ async function handleExecutionReportManager({
   executed,
 }: {
   status: string;
-  order: BotOrderDocument;
+  order: OrderDocument;
   executed: number;
 }) {
   if (status === "NEW") return;
@@ -115,7 +107,7 @@ async function handleExecutionReportAdministrator({
   executed,
 }: {
   status: string;
-  order: BotOrderDocument;
+  order: OrderDocument;
   executed: number;
 }) {
   if (status === "NEW") return;
