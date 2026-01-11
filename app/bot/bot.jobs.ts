@@ -12,6 +12,7 @@ import {
 } from "./bot.utils";
 import { SessionModel } from "models/session";
 import { calculateBollLimits } from "../limits/limits.service";
+import { activeStatus } from "../order/order.constants";
 const botStarting = new Set<string>();
 const botIntervals: Record<string, NodeJS.Timeout> = {};
 
@@ -29,7 +30,7 @@ export async function runBotJob(botId: string, apiKey: string) {
 async function runAdministratorJob(bot: BotDocument, apiKey: string) {
   const orders = await OrderModel.find({
     botId: bot._id,
-    status: { $in: ["active", "executed"] },
+    status: { $in: activeStatus },
   });
   const filledOrders = orders.filter(
     (order) => order.executedQtd === order.quantity
@@ -307,7 +308,7 @@ export async function runManagerJob(botId: string) {
     if (!session || session.status !== "active") return;
     const orders = await OrderModel.find({
       botId,
-      status: { $in: ["active", "executed", "partialExecuted"] },
+      status: { $in: activeStatus },
     });
     const { stopRun, cryptoDelta } = await handleExecutedOrdersManager({
       bot,
