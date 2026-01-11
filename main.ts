@@ -16,13 +16,12 @@ const PORT = process.env.PORT || 3001;
     await connectToDatabase();
     startSocketConsumer();
     startPingMonitor();
-    startAgenda();
 
     // Executa o bootstrap, mas não bloqueia o start do servidor
-    bootstrap().catch((err) => {
+    await bootstrap().catch((err) => {
       console.error("[BOOTSTRAP] Falha ao inicializar sessões ativas:", err);
     });
-
+    startAgenda();
     const server = createServer(app);
     initializeWebSocketServer(server);
 
