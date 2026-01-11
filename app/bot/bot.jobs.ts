@@ -420,7 +420,6 @@ async function handleOperationManager({
     direction,
     status: "active",
   }).lean();
-  console.log(order);
   if (!order) {
     const message = {
       action: "createOrder",
