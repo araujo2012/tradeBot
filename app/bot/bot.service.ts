@@ -3,7 +3,7 @@ import { OrderModel } from "../../models/order";
 import { startBotJob } from "./bot.jobs";
 import { socketOrderStatus } from "../socket/socket.requests";
 import { activeStatus } from "../order/order.constants";
-import { logAndSendToQueue } from "app/lib/rabbit";
+import { logAndSendToQueue } from "../lib/rabbit";
 
 export async function startAdministrator(bot: BotDocument, apiKey: string) {
   try {

@@ -1,4 +1,4 @@
-import { BotType } from "app/bot/bot.type";
+import { BotType } from "../app/bot/bot.type";
 import mongoose, { Schema, HydratedDocument } from "mongoose";
 
 export type BotDocument = HydratedDocument<BotType>;
