@@ -251,16 +251,6 @@ export async function handleRestartSession(sessionId: string) {
   }
 }
 
-async function handleSyncOrder(payload: {
-  apiKey: string;
-  origClientOrderId: string;
-  symbol: string;
-  sessionId: string;
-}): Promise<void> {
-  const { origClientOrderId } = payload;
-  const response = await socketOrderStatus(payload);
-}
-
 async function handleReplaceOrder(
   order: OrderEntry & {
     sessionId: string;

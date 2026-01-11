@@ -1,4 +1,4 @@
-import { BotType } from "../app/bot/bot.type";
+import { BotType, modeEnum } from "../app/bot/bot.type";
 import mongoose, { Schema, HydratedDocument } from "mongoose";
 
 export type BotDocument = HydratedDocument<BotType>;
@@ -25,7 +25,7 @@ const botSchema = new Schema<BotDocument>(
     },
     mode: {
       type: String,
-      enum: ["administrator", "manager"],
+      enum: modeEnum,
       required: true,
     },
     target: {

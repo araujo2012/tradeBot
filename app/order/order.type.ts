@@ -1,9 +1,9 @@
-import type { BotType } from "../bot/bot.type";
+import type { BotType, modeType } from "../bot/bot.type";
 import type { Document } from "mongoose";
 
 export interface OrderEntry {
   botId: string;
-  mode: "administrator";
+  mode: modeType;
   direction: "buy" | "sell";
   price: number;
   quantity: number;
@@ -35,7 +35,7 @@ export type OrderDoc = Document & {
   executed?: boolean;
   executedQtd: number;
   status: "active" | "executed" | "closed" | "pending";
-  mode: "administrator";
+  mode: modeType;
   createdAt?: Date;
   updatedAt?: Date;
   lastExecutedTime?: Date;

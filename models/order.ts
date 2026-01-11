@@ -1,11 +1,12 @@
-import { directionList, intervalList } from "../app/order/order.constants";
+import { modeEnum, modeType } from "../app/bot/bot.type";
+import { directionList } from "../app/order/order.constants";
 import { Schema, model, HydratedDocument, Types } from "mongoose";
 
 export interface OrderType {
   userId: Types.ObjectId;
   botId: Types.ObjectId;
   sessionId: Types.ObjectId;
-  mode: "administrator" | "manager";
+  mode: modeType;
   symbol: string;
   price: number;
   quantity: number;
@@ -27,7 +28,7 @@ const orderSchema = new Schema<OrderType>(
     sessionId: { type: Schema.Types.ObjectId, ref: "Session", required: true },
     mode: {
       type: String,
-      enum: ["administrator"],
+      enum: modeEnum,
       required: true,
     },
     symbol: { type: String, required: true },
