@@ -353,7 +353,7 @@ export async function runManagerJob(botId: string) {
       qtdDecimal: symbolConfig.qtdDecimal,
     });
   } catch (err) {
-    logger.error("runManagerJob error", err);
+    logger.error(`runManagerJob error ${err}`);
   } finally {
     await finishRunManagerJobQueue(botId);
   }
