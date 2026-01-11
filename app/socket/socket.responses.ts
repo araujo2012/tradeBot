@@ -72,7 +72,7 @@ async function handleExecutionReportManager({
     await order.save();
     const message = {
       action: "runManagerBot",
-      botId: order.botId,
+      botId: order.botId.toString(),
     };
     logAndSendToQueue("socket", message);
     return;
@@ -84,7 +84,7 @@ async function handleExecutionReportManager({
     await new Promise((resolve) => setTimeout(resolve, 60_000));
     const message = {
       action: "runManagerBot",
-      botId: order.botId,
+      botId: order.botId.toString(),
     };
     logAndSendToQueue("socket", message);
   }
@@ -94,7 +94,7 @@ async function handleExecutionReportManager({
     await order.save();
     const message = {
       action: "runManagerBot",
-      botId: order.botId,
+      botId: order.botId.toString(),
     };
     logAndSendToQueue("socket", message);
   }

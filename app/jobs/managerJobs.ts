@@ -62,7 +62,7 @@ async function processBotOrders({
   if (buyOrders.length < 1 || sellOrders.length < 1) {
     logAndSendToQueue("socket", {
       action: "runManagerBot",
-      botId: bot._id,
+      botId: bot._id.toString(),
     });
   }
 }
@@ -115,7 +115,7 @@ agenda.define(
     for (const bot of bots) {
       logAndSendToQueue("socket", {
         action: "runManagerBot",
-        botId: bot._id,
+        botId: bot._id.toString(),
       });
     }
   }
