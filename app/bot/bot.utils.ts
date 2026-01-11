@@ -41,9 +41,6 @@ export async function handleRunManagerJobQueue(
   const delayKey = `bot:delay:${normalizedBotId}`;
   const lock = await redis.set(lockKey, "1", "EX", 60, "NX");
   const b = await redis.set(lockKey, "1", "EX", 60, "NX");
-  console.log("ISO:", new Date().toISOString());
-  console.log(JSON.stringify(lockKey));
-  console.log({ lock, b });
   if (lock === "OK") {
     await redis.del(delayKey);
     return true;
@@ -63,6 +60,7 @@ export async function handleRunManagerJobQueue(
 
 export async function finishRunManagerJobQueue(botId: string | Types.ObjectId) {
   const normalizedBotId = normalizeBotId(botId);
+  await sleep(5_000);
   const lockKey = `bot:lock:${normalizedBotId}`;
   await redis.del(lockKey);
 }
