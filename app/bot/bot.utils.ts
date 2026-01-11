@@ -57,22 +57,10 @@ export async function handleRunManagerJobQueue(
   return false;
 }
 
-export async function finishRunManagerJobQueue(botId: string) {
-  const redisKey = `bot:run:${botId}`;
-
-  const raw = await redis.get(redisKey);
-  if (!raw) return;
-
-  const state = JSON.parse(raw);
-
-  await redis.setex(
-    redisKey,
-    60,
-    JSON.stringify({
-      isRunning: false,
-      hasQueue: state.hasQueue || 0,
-    })
-  );
+export async function finishRunManagerJobQueue(botId: string | Types.ObjectId) {
+  const normalizedBotId = normalizeBotId(botId);
+  const lockKey = `bot:lock:${normalizedBotId}`;
+  await redis.del(lockKey);
 }
 
 export async function getMinVarianceBot(minValue: number, money: number) {
