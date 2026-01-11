@@ -27,55 +27,34 @@ export function createOrderFromBot(bot: BotDocument) {
   };
 }
 
-export async function handleRunManagerJobQueue(botId: string) {
-  const redisKey = `bot:run:${botId}`;
-  const raw = await redis.get(redisKey);
-  if (!raw) {
-    await redis.setex(
-      redisKey,
-      60,
-      JSON.stringify({
-        isRunning: true,
-        hasQueue: 0,
-      })
-    );
+function normalizeBotId(botId: string | Types.ObjectId): string {
+  if (typeof botId === "string") return botId;
+  if (botId instanceof Types.ObjectId) return botId.toString();
+  return String(botId);
+}
+
+export async function handleRunManagerJobQueue(
+  botId: string
+): Promise<boolean> {
+  const normalizedBotId = normalizeBotId(botId);
+  const lockKey = `bot:lock:${normalizedBotId}`;
+  const delayKey = `bot:delay:${normalizedBotId}`;
+  const lock = await redis.set(lockKey, "1", "EX", 60, "NX");
+  if (lock === "OK") {
+    await redis.del(delayKey);
     return true;
   }
-  const state = JSON.parse(raw);
-  if (state.isRunning === true) {
-    const nextQueue = (state.hasQueue || 0) + 1;
-
-    let delayMs = 10_000;
-    if (state.hasQueue === 1) delayMs = 30_000;
-    if (state.hasQueue > 1) delayMs = 60_000;
-
-    await redis.setex(
-      redisKey,
-      60,
-      JSON.stringify({
-        isRunning: true,
-        hasQueue: nextQueue,
-      })
-    );
-
-    await sleep(delayMs);
-
-    await logAndSendToQueue("socket", {
-      action: "runManagerBot",
-      botId: botId.toString(),
-    });
-
-    return false;
-  }
-  await redis.setex(
-    redisKey,
-    60,
-    JSON.stringify({
-      isRunning: true,
-      hasQueue: 0,
-    })
-  );
-  return true;
+  const queue = await redis.incr(delayKey);
+  await redis.expire(delayKey, 120);
+  let delayMs = 10_000;
+  if (queue === 2) delayMs = 30_000;
+  if (queue > 2) delayMs = 60_000;
+  await sleep(delayMs);
+  logAndSendToQueue("socket", {
+    action: "runManagerBot",
+    botId: normalizedBotId,
+  });
+  return false;
 }
 
 export async function finishRunManagerJobQueue(botId: string) {
