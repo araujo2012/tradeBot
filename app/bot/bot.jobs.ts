@@ -419,7 +419,8 @@ async function handleOperationManager({
     botId,
     direction,
     status: "active",
-  });
+  }).lean();
+  console.log(order);
   if (!order) {
     const message = {
       action: "createOrder",
