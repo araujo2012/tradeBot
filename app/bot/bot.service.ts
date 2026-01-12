@@ -1,6 +1,5 @@
 import { BotDocument, BotModel } from "../../models/bot";
 import { OrderModel } from "../../models/order";
-import { startBotJob } from "./bot.jobs";
 import { socketOrderStatus } from "../socket/socket.requests";
 import { activeStatus } from "../order/order.constants";
 import { logAndSendToQueue } from "../lib/rabbit";
@@ -35,7 +34,6 @@ export async function startAdministrator(bot: BotDocument, apiKey: string) {
       }
       await order.save();
     });
-    startBotJob(bot._id.toString(), apiKey);
   } catch (error) {
     bot.status = "error";
     bot.save();
