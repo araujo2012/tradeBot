@@ -359,6 +359,7 @@ async function processQueue() {
   const { msg, channel } = queue.shift();
   try {
     const content = JSON.parse(msg.content.toString());
+    console.log(content.action);
     switch (content.action) {
       case "startSession":
         await handleStartSession(content.sessionId);
