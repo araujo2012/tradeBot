@@ -608,28 +608,6 @@ function generateNewOrdersAdministrator(
   return [buyOrders.reverse(), sellOrders.reverse()];
 }
 
-export async function startBotJob(botId: string, apiKey: string) {
-  if (botIntervals[botId] || botStarting.has(botId)) return;
-  botStarting.add(botId);
-  const delay = Math.floor(Math.random() * 60_000);
-  await new Promise((r) => setTimeout(r, delay));
-  if (botIntervals[botId]) {
-    botStarting.delete(botId);
-    return;
-  }
-  try {
-    await runBotJob(botId, apiKey);
-  } catch (err) {
-    console.error(err);
-  }
-
-  botIntervals[botId] = setInterval(() => {
-    runBotJob(botId, apiKey).catch(console.error);
-  }, 60_000);
-  botStarting.delete(botId);
-  logger.info(`🤖 Bot ${botId} iniciado.`);
-}
-
 export function stopBotJob(botId: string) {
   if (!botIntervals[botId]) {
     console.warn(`Bot ${botId} não está rodando`);
