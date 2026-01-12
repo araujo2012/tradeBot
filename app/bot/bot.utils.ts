@@ -42,7 +42,7 @@ export async function handleRunManagerJobQueue(
   const raw = await redis.get(lockKey);
   if (raw !== null && Number(raw) > 0) {
     const queue = await redis.incr(delayKey);
-    await redis.expire(delayKey, 300);
+    await redis.expire(delayKey, 60);
     let delayMs = 10_000;
     if (queue === 2) delayMs = 30_000;
     if (queue > 2) delayMs = 60_000;
@@ -53,7 +53,7 @@ export async function handleRunManagerJobQueue(
     });
     return false;
   }
-  await redis.set(lockKey, "1", "EX", 300);
+  await redis.set(lockKey, "1", "EX", 60);
   await redis.del(delayKey);
   return true;
 }
@@ -63,7 +63,7 @@ export async function incrementManagerInFlight(botId: string) {
   const lockKey = `bot:inflight:${normalizedBotId}`;
   const count = await redis.incr(lockKey);
   console.log(botId, count);
-  await redis.expire(lockKey, 300);
+  await redis.expire(lockKey, 60);
 }
 
 export async function decrementManagerInFlight(botId: string) {
