@@ -305,7 +305,7 @@ export async function runManagerJob(botId: string) {
   if (!canRun) return;
   try {
     const bot = await BotModel.findById(botId);
-    if (!bot || bot.status !== "active") return;
+    if (!bot || bot.status !== "active" || bot.mode !== "manager") return;
     const session = await SessionModel.findById(bot.sessionId).lean();
     if (!session || session.status !== "active") return;
     const orders = await OrderModel.find({
