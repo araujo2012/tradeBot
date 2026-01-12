@@ -61,7 +61,8 @@ export async function handleRunManagerJobQueue(
 export async function incrementManagerInFlight(botId: string) {
   const normalizedBotId = normalizeBotId(botId);
   const lockKey = `bot:inflight:${normalizedBotId}`;
-  await redis.incr(lockKey);
+  const count = await redis.incr(lockKey);
+  console.log(botId, count);
   await redis.expire(lockKey, 300);
 }
 
@@ -71,6 +72,7 @@ export async function decrementManagerInFlight(botId: string) {
   const exists = await redis.exists(lockKey);
   if (!exists) return;
   const remaining = await redis.decr(lockKey);
+  console.log(botId, remaining);
   if (remaining <= 0) {
     await redis.del(lockKey);
   }
