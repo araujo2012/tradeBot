@@ -47,7 +47,7 @@ export async function sendToActivateBotQueue({
       botId: normalizedBotId,
     },
     {
-      jobId: `${action}:${normalizedBotId}`,
+      jobId: `${action}-${normalizedBotId}`,
       attempts: 5,
       backoff: {
         type: "exponential",
