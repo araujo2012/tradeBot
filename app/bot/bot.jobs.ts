@@ -474,8 +474,8 @@ async function setVarianceManager({
   const minVariance = await getMinVarianceBot(symbolConfig.minValue, target);
   const { upperLimit, lowerLimit } = await calculateBollLimits({
     symbol: symbol,
-    interval: "1h",
-    period: 21,
+    interval: "15m",
+    period: 84,
     width: 2.1,
   });
   return Math.max(
