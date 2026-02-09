@@ -303,8 +303,20 @@ async function handleReplaceOrder(
       botId: order.botId.toString(),
     });
   } catch (err) {
-    console.error("Error creating order:", err);
-    throw err;
+    logger.warn(
+      {
+        err,
+        binanceId,
+        order,
+      },
+      "Order replace failed, trying cancel fallback"
+    );
+    await handleCancelOrder({
+      apiKey,
+      origClientOrderId: binanceId,
+      symbol: order.symbol,
+      sessionId: order.sessionId,
+    });
   }
 }
 
