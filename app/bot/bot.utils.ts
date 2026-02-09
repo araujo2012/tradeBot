@@ -2,8 +2,6 @@ import { Types } from "mongoose";
 import { intervalList, directionList } from "../order/order.constants";
 import { BotDocument } from "../../models/bot";
 import { redis } from "../lib/redis";
-import { sleep } from "../lib/sleep";
-import { logAndSendToQueue } from "../lib/rabbit";
 
 export function createOrderFromBot(bot: BotDocument) {
   return {
@@ -38,23 +36,10 @@ export async function handleRunManagerJobQueue(
 ): Promise<boolean> {
   const normalizedBotId = normalizeBotId(botId);
   const lockKey = `bot:inflight:${normalizedBotId}`;
-  const delayKey = `bot:delay:${normalizedBotId}`;
-  const raw = await redis.get(lockKey);
-  if (raw !== null && Number(raw) > 0) {
-    const queue = await redis.incr(delayKey);
-    await redis.expire(delayKey, 60);
-    let delayMs = 10_000;
-    if (queue === 2) delayMs = 30_000;
-    if (queue > 2) delayMs = 60_000;
-    await sleep(delayMs);
-    logAndSendToQueue("socket", {
-      action: "runManagerBot",
-      botId: normalizedBotId,
-    });
+  const acquired = await redis.set(lockKey, "1", "NX");
+  if (acquired === null) {
     return false;
   }
-  await redis.set(lockKey, "1", "EX", 60);
-  await redis.del(delayKey);
   return true;
 }
 
@@ -63,28 +48,14 @@ export async function incrementManagerInFlight(botId: string) {
   const lockKey = `bot:inflight:${normalizedBotId}`;
   const count = await redis.incr(lockKey);
   console.log(botId, count);
-  await redis.expire(lockKey, 60);
 }
 
 export async function decrementManagerInFlight(botId: string) {
   const normalizedBotId = normalizeBotId(botId);
   const lockKey = `bot:inflight:${normalizedBotId}`;
-  const exists = await redis.exists(lockKey);
-  if (!exists) return;
   const remaining = await redis.decr(lockKey);
   console.log(botId, remaining);
   if (remaining <= 0) {
-    await redis.del(lockKey);
-  }
-}
-
-export async function finishRunManagerJobQueue(
-  botId: string | Types.ObjectId,
-  publishedMessages: number
-) {
-  const normalizedBotId = normalizeBotId(botId);
-  const lockKey = `bot:inflight:${normalizedBotId}`;
-  if (publishedMessages === 0) {
     await redis.del(lockKey);
   }
 }

@@ -7,7 +7,6 @@ import { socketOrderStatus } from "../socket/socket.requests";
 import { logger } from "../lib/pino";
 import {
   decrementManagerInFlight,
-  finishRunManagerJobQueue,
   getMinVarianceBot,
   handleRunManagerJobQueue,
   incrementManagerInFlight,
@@ -302,7 +301,7 @@ async function runAdministratorJob(bot: BotDocument, apiKey: string) {
 
 export async function runManagerJob(botId: string) {
   const canRun = await handleRunManagerJobQueue(botId);
-  if (!canRun) return;
+  if (!canRun) return false;
   try {
     const bot = await BotModel.findById(botId);
     if (!bot || bot.status !== "active" || bot.mode !== "manager") return;
@@ -358,6 +357,7 @@ export async function runManagerJob(botId: string) {
     logger.error(`runManagerJob error ${err}`);
   } finally {
     await decrementManagerInFlight(botId);
+    return true;
   }
 }
 

@@ -383,9 +383,6 @@ async function processQueue() {
           content.binanceId
         );
         break;
-      case "runManagerBot":
-        await runManagerJob(content.botId);
-        break;
       default:
         console.warn("Unknown status:", content.action);
     }
