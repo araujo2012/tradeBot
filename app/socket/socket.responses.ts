@@ -1,7 +1,6 @@
-import { sendToActivateBotQueue } from "app/lib/bullMq";
+import { sendToActivateBotQueue } from "../lib/bullMq";
 import { OrderModel, OrderDocument } from "../../models/order";
 import { logger } from "../lib/pino";
-import { logAndSendToQueue } from "../lib/rabbit";
 
 export async function handlePlaceOrderResponse(response: any) {
   const { id, result } = response;

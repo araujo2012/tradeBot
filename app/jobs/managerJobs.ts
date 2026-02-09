@@ -3,7 +3,7 @@ import { SessionModel } from "../../models/session";
 import { BotModel } from "../../models/bot";
 import { OrderModel } from "../../models/order";
 import { logAndSendToQueue } from "../lib/rabbit";
-import { sendToActivateBotQueue } from "app/lib/bullMq";
+import { sendToActivateBotQueue } from "../lib/bullMq";
 
 export const CHECK_BUY_SELL = "checkBuyAndSellOrder";
 export const RUN_MANAGER_BOTS = "runManagerBotsBatch";

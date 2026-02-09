@@ -19,7 +19,7 @@ import { normalizeValue } from "../order/order.utils";
 import { runManagerJob, stopBotJob } from "../bot/bot.jobs";
 import { logger } from "../lib/pino";
 import { decrementManagerInFlight } from "../bot/bot.utils";
-import { sendToActivateBotQueue } from "app/lib/bullMq";
+import { sendToActivateBotQueue } from "../lib/bullMq";
 
 // Rate limit: 5 mensagens por segundo
 const RATE_LIMIT = 5;

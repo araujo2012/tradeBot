@@ -2,8 +2,7 @@ import { BotDocument, BotModel } from "../../models/bot";
 import { OrderModel } from "../../models/order";
 import { socketOrderStatus } from "../socket/socket.requests";
 import { activeStatus } from "../order/order.constants";
-import { logAndSendToQueue } from "../lib/rabbit";
-import { sendToActivateBotQueue } from "app/lib/bullMq";
+import { sendToActivateBotQueue } from "../lib/bullMq";
 
 export async function startAdministrator(bot: BotDocument, apiKey: string) {
   try {
