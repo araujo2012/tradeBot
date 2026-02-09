@@ -1,6 +1,6 @@
 import { Queue, Worker } from "bullmq";
 import { redis } from "./redis";
-import { runManagerJob } from "app/bot/bot.jobs";
+import { runManagerJob } from "../bot/bot.jobs";
 
 const ACTIVATE_BOT = "activate-bot";
 
