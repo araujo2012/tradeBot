@@ -3,6 +3,7 @@ import { SessionModel } from "../../models/session";
 import { BotModel } from "../../models/bot";
 import { OrderModel } from "../../models/order";
 import { logAndSendToQueue } from "../lib/rabbit";
+import { sendToActivateBotQueue } from "app/lib/bullMq";
 
 export const CHECK_BUY_SELL = "checkBuyAndSellOrder";
 export const RUN_MANAGER_BOTS = "runManagerBotsBatch";
@@ -60,7 +61,7 @@ async function processBotOrders({
   }
   if (cancelled) return;
   if (buyOrders.length < 1 || sellOrders.length < 1) {
-    logAndSendToQueue("socket", {
+    sendToActivateBotQueue({
       action: "runManagerBot",
       botId: bot._id.toString(),
     });
@@ -117,7 +118,7 @@ agenda.define(
 
     for (const bot of bots) {
       if (Math.random() <= 0.1) {
-        logAndSendToQueue("socket", {
+        sendToActivateBotQueue({
           action: "runManagerBot",
           botId: bot._id.toString(),
         });

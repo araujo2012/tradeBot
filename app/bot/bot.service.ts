@@ -3,6 +3,7 @@ import { OrderModel } from "../../models/order";
 import { socketOrderStatus } from "../socket/socket.requests";
 import { activeStatus } from "../order/order.constants";
 import { logAndSendToQueue } from "../lib/rabbit";
+import { sendToActivateBotQueue } from "app/lib/bullMq";
 
 export async function startAdministrator(bot: BotDocument, apiKey: string) {
   try {
@@ -66,7 +67,7 @@ export async function startManager(bot: BotDocument, apiKey: string) {
       if (executedQtd > order.executedQtd) {
         order.executedQtd = executedQtd;
       } else {
-        logAndSendToQueue("socket", {
+        sendToActivateBotQueue({
           action: "runManagerBot",
           botId: bot._id.toString(),
         });
@@ -77,7 +78,7 @@ export async function startManager(bot: BotDocument, apiKey: string) {
       }
       await order.save();
     });
-    logAndSendToQueue("socket", {
+    sendToActivateBotQueue({
       action: "runManagerBot",
       botId: bot._id.toString(),
     });

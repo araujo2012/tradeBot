@@ -19,6 +19,7 @@ import { normalizeValue } from "../order/order.utils";
 import { runManagerJob, stopBotJob } from "../bot/bot.jobs";
 import { logger } from "../lib/pino";
 import { decrementManagerInFlight } from "../bot/bot.utils";
+import { sendToActivateBotQueue } from "app/lib/bullMq";
 
 // Rate limit: 5 mensagens por segundo
 const RATE_LIMIT = 5;
@@ -189,7 +190,7 @@ async function handleCancelOrder({
         await order.save();
       }
       await decrementManagerInFlight(order.botId.toString());
-      logAndSendToQueue("socket", {
+      sendToActivateBotQueue({
         action: "runManagerBot",
         botId: order.botId.toString(),
       });
@@ -297,7 +298,7 @@ async function handleReplaceOrder(
       }
     }
     await decrementManagerInFlight(order.botId.toString());
-    logAndSendToQueue("socket", {
+    sendToActivateBotQueue({
       action: "runManagerBot",
       botId: order.botId.toString(),
     });

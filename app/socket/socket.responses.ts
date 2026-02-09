@@ -1,3 +1,4 @@
+import { sendToActivateBotQueue } from "app/lib/bullMq";
 import { OrderModel, OrderDocument } from "../../models/order";
 import { logger } from "../lib/pino";
 import { logAndSendToQueue } from "../lib/rabbit";
@@ -70,11 +71,10 @@ async function handleExecutionReportManager({
   if (status === "CANCELED") {
     order.status = executed > 0 ? "executed" : "closed";
     await order.save();
-    const message = {
+    sendToActivateBotQueue({
       action: "runManagerBot",
       botId: order.botId.toString(),
-    };
-    logAndSendToQueue("socket", message);
+    });
     return;
   }
   if (status === "PARTIALLY_FILLED") {
@@ -82,21 +82,19 @@ async function handleExecutionReportManager({
     order.status = "executed";
     await order.save();
     await new Promise((resolve) => setTimeout(resolve, 60_000));
-    const message = {
+    sendToActivateBotQueue({
       action: "runManagerBot",
       botId: order.botId.toString(),
-    };
-    logAndSendToQueue("socket", message);
+    });
   }
   if (status === "FILLED") {
     order.executedQtd = executed;
     order.status = "executed";
     await order.save();
-    const message = {
+    sendToActivateBotQueue({
       action: "runManagerBot",
       botId: order.botId.toString(),
-    };
-    logAndSendToQueue("socket", message);
+    });
   }
   return;
 }
