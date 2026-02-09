@@ -1,11 +1,16 @@
 import { Queue, Worker } from "bullmq";
-import { redis } from "./redis";
 import { runManagerJob } from "../bot/bot.jobs";
+import Redis from "ioredis";
 
 const ACTIVATE_BOT = "activate-bot";
 
+const bullRedis = new Redis(process.env.REDIS_URI!, {
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+});
+
 export const activateBotQueue = new Queue(ACTIVATE_BOT, {
-  connection: redis as any,
+  connection: bullRedis as any,
 });
 
 export const activateBotWorker = new Worker(
@@ -24,7 +29,7 @@ export const activateBotWorker = new Worker(
     }
   },
   {
-    connection: redis as any,
+    connection: bullRedis as any,
   }
 );
 
