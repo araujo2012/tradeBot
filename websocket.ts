@@ -4,12 +4,7 @@ import { IncomingMessage } from "http";
 
 const JWT_SECRET = process.env.JWT_SECRET || "segredo_super_secreto";
 
-// Mapa para armazenar conexões por userId
 const userSockets = new Map<string, WebSocket>();
-
-export function getUserSocket(userId: string): WebSocket | undefined {
-  return userSockets.get(userId);
-}
 
 export function sendToUser(userId: string, data: any) {
   const ws = userSockets.get(userId);
@@ -18,19 +13,10 @@ export function sendToUser(userId: string, data: any) {
   }
 }
 
-export function broadcast(data: any) {
-  for (const ws of userSockets.values()) {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(data));
-    }
-  }
-}
-
 export function initializeWebSocketServer(server: import("http").Server) {
   const wss = new WebSocketServer({ server, path: "/ws" });
 
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
-    // Autenticação via query string: ws://host/ws?token=xxx
     const url = new URL(req.url || "", `http://${req.headers.host}`);
     const token = url.searchParams.get("token");
     if (!token) {
@@ -53,10 +39,7 @@ export function initializeWebSocketServer(server: import("http").Server) {
     ws.on("close", () => {
       userSockets.delete(userId);
     });
-    ws.on("message", (msg) => {
-      // Aqui você pode tratar mensagens vindas do frontend
-      // Exemplo: console.log(`Mensagem do usuário ${userId}:`, msg.toString());
-    });
+    ws.on("message", () => {});
     ws.send(
       JSON.stringify({
         type: "connection",

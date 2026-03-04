@@ -24,7 +24,6 @@ export async function bootstrap() {
   }
 }
 
-// Executa automaticamente se chamado diretamente
 if (require.main === module) {
   bootstrap();
 }

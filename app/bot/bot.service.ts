@@ -1,4 +1,4 @@
-import { BotDocument, BotModel } from "../../models/bot";
+import { BotDocument } from "../../models/bot";
 import { OrderModel } from "../../models/order";
 import { socketOrderStatus } from "../socket/socket.requests";
 import { activeStatus } from "../order/order.constants";

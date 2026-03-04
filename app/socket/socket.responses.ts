@@ -1,11 +1,9 @@
 import { sendToActivateBotQueue } from "../lib/bullMq";
 import { OrderModel, OrderDocument } from "../../models/order";
-import { logger } from "../lib/pino";
 
 export async function handlePlaceOrderResponse(response: any) {
   const { id, result } = response;
-  const { clientOrderId, status, executedQty, cummulativeQuoteQty } =
-    result || {};
+  const { clientOrderId, status } = result || {};
   const order = await OrderModel.findOne({
     $or: [{ clientId: id }, { binanceId: clientOrderId }],
   });
@@ -119,8 +117,4 @@ async function handleExecutionReportAdministrator({
     await order.save();
   }
   return;
-}
-
-export async function handleErrors(response: any) {
-  logger.error(response);
 }
