@@ -310,9 +310,6 @@ async function handleReplaceOrder(
 
 async function handleExecutedOrder(order: OrderDocument, result: any) {
   switch (order.mode) {
-    case "administrator":
-      await handleExecutedOrderAdministrator(order, result);
-      break;
     case "manager":
       await handleExecutedOrderManager(order, result);
       break;
@@ -320,18 +317,6 @@ async function handleExecutedOrder(order: OrderDocument, result: any) {
       break;
   }
   logger.info("Executed");
-}
-
-async function handleExecutedOrderAdministrator(
-  order: OrderDocument,
-  result: any
-) {
-  const executed = Number(result.executedQty);
-  if (executed > order.executedQtd) {
-    order.executedQtd = executed;
-  }
-  order.status = "executed";
-  await order.save();
 }
 
 async function handleExecutedOrderManager(order: OrderDocument, result: any) {

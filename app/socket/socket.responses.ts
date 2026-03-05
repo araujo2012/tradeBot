@@ -43,13 +43,6 @@ export async function handleExecutionReport(response: any) {
         executed: Number(z),
       });
       break;
-    case "administrator":
-      await handleExecutionReportAdministrator({
-        status,
-        order,
-        executed: Number(z),
-      });
-      break;
     default:
       break;
   }
@@ -92,29 +85,6 @@ async function handleExecutionReportManager({
       action: "runManagerBot",
       botId: order.botId.toString(),
     });
-  }
-  return;
-}
-
-async function handleExecutionReportAdministrator({
-  status,
-  order,
-  executed,
-}: {
-  status: string;
-  order: OrderDocument;
-  executed: number;
-}) {
-  if (status === "NEW") return;
-  if (status === "CANCELED") {
-    order.status = executed > 0 ? "executed" : "closed";
-    await order.save();
-    return;
-  }
-  if (status === "FILLED" || status === "PARTIALLY_FILLED") {
-    order.executedQtd = executed;
-    order.status = "executed";
-    await order.save();
   }
   return;
 }
