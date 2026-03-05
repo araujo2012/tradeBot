@@ -16,8 +16,6 @@ const PORT = process.env.PORT || 3001;
     await connectToDatabase();
     startSocketConsumer();
     startPingMonitor();
-
-    // Executa o bootstrap, mas não bloqueia o start do servidor
     await bootstrap().catch((err) => {
       console.error("[BOOTSTRAP] Falha ao inicializar sessões ativas:", err);
     });

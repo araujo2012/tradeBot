@@ -1,4 +1,4 @@
-import { connectToRabbitMQ, logAndSendToQueue } from "../lib/rabbit";
+import { connectToRabbitMQ } from "../lib/rabbit";
 import { SessionModel } from "../../models/session";
 import { OrderDocument, OrderModel } from "../../models/order";
 import { BotModel } from "../../models/bot";
@@ -9,26 +9,23 @@ import {
   socketUserStream,
   socketOrderPlace,
   socketOrderCancel,
-  socketOrderStatus,
   socketOrderReplace,
 } from "./socket.requests";
 import { getBinanceSocket } from "./socket.main";
 import { sendToUser } from "../../websocket";
 import { OrderEntry } from "../order/order.type";
 import { normalizeValue } from "../order/order.utils";
-import { runManagerJob, stopBotJob } from "../bot/bot.jobs";
+import { stopBotJob } from "../bot/bot.jobs";
 import { logger } from "../lib/pino";
 import { decrementManagerInFlight } from "../bot/bot.utils";
 import { sendToActivateBotQueue } from "../lib/bullMq";
 
-// Rate limit: 5 mensagens por segundo
 const RATE_LIMIT = 5;
 const INTERVAL_MS = 1000 / RATE_LIMIT;
 let processing = false;
 const queue: any[] = [];
 const restartingSessions = new Set<string>();
 
-// Função para processar startSession
 async function handleStartSession(sessionId: string) {
   console.log("iniciando sessao: ", sessionId);
   const session = await SessionModel.findById(sessionId);
@@ -81,10 +78,8 @@ async function handleStartSession(sessionId: string) {
   }
 }
 
-// Função para processar stopSession
 async function handleStopSession(sessionId: string, userId: string) {
   try {
-    // Encerra o socket se existir
     const socket = getBinanceSocket(userId);
     if (socket) {
       socket.close();
@@ -95,10 +90,8 @@ async function handleStopSession(sessionId: string, userId: string) {
       status: "inactive",
     });
     logger.warn(`Session ${sessionId} stopped for user ${userId}`);
-    // Sucesso: status inactive
     sendToUser(userId, { type: "session", status: "inactive", sessionId });
   } catch (err) {
-    // Falha: status active
     sendToUser(userId, { type: "session", status: "active", sessionId });
     throw err;
   }
@@ -229,13 +222,8 @@ export async function handleRestartSession(sessionId: string) {
       sessionId,
     });
 
-    // 1️⃣ Cleanup total
     await stopSessionBots(sessionId);
-
-    // 2️⃣ Pequeno delay (protege contra loop)
     await new Promise((r) => setTimeout(r, 1500));
-
-    // 3️⃣ Start reutilizando a lógica existente
     await handleStartSession(sessionId);
   } catch (err) {
     console.error(`❌ Falha ao reiniciar sessão ${sessionId}`, err);
@@ -322,9 +310,6 @@ async function handleReplaceOrder(
 
 async function handleExecutedOrder(order: OrderDocument, result: any) {
   switch (order.mode) {
-    case "administrator":
-      await handleExecutedOrderAdministrator(order, result);
-      break;
     case "manager":
       await handleExecutedOrderManager(order, result);
       break;
@@ -332,18 +317,6 @@ async function handleExecutedOrder(order: OrderDocument, result: any) {
       break;
   }
   logger.info("Executed");
-}
-
-async function handleExecutedOrderAdministrator(
-  order: OrderDocument,
-  result: any
-) {
-  const executed = Number(result.executedQty);
-  if (executed > order.executedQtd) {
-    order.executedQtd = executed;
-  }
-  order.status = "executed";
-  await order.save();
 }
 
 async function handleExecutedOrderManager(order: OrderDocument, result: any) {
@@ -402,7 +375,7 @@ async function processQueue() {
     channel.ack(msg);
   } catch (err) {
     console.error("Error processing socket queue message:", err);
-    channel.nack(msg, false, false); // descarta mensagem com erro
+    channel.nack(msg, false, false);
   } finally {
     processing = false;
   }

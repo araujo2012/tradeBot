@@ -19,13 +19,6 @@ export interface KlinesResponse {
   message?: string;
 }
 
-export interface StartBinanceSocketParams {
-  listenKey: string;
-  sessionId: string;
-  apiKey?: string;
-  apiSecret?: string;
-}
-
 export interface RateLimit {
   rateLimitType: string;
   interval: string;

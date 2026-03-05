@@ -1,5 +1,3 @@
-// app/limits/limits.service.ts
-
 import { getKlines } from "../binance/binance.service";
 import {
   calculateKlineValue,

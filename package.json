@@ -7,8 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only main.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "jest",
-    "seed": "ts-node scripts/seedDatabase.ts"
+    "test": "jest"
   },
   "dependencies": {
     "@types/agenda": "^4.1.4",

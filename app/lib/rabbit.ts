@@ -11,9 +11,7 @@ export async function connectToRabbitMQ() {
   const connection = await amqp.connect(uri);
   channel = await connection.createChannel();
 
-  // Cria a fila 'messages' assim que conectar
   await channel.assertQueue("messages", { durable: true });
-  // Cria a fila 'socket' para requisições de socket
   await channel.assertQueue("socket", { durable: true });
 
   console.log("✅ Connected to RabbitMQ and queue 'messages' is ready");

@@ -1,7 +1,6 @@
 import { SessionModel } from "../../models/session";
-import { getRabbitChannel, logAndSendToQueue } from "../lib/rabbit";
+import { logAndSendToQueue } from "../lib/rabbit";
 
-// Buscar todas as sessões de um usuário
 async function getSessions(userId: string) {
   const sessions = await SessionModel.find({ userId }).select(
     "-apiKey -apiSecret"
@@ -9,12 +8,10 @@ async function getSessions(userId: string) {
   return sessions;
 }
 
-// Criar nova sessão
 async function createSession(userId: string, sessionData: any) {
   return await SessionModel.create({ ...sessionData, userId });
 }
 
-// Atualizar uma sessão existente
 async function updateSession(
   sessionId: string,
   userId: string,
@@ -42,7 +39,6 @@ async function updateSession(
   return session;
 }
 
-// Deletar uma sessão
 async function deleteSession(sessionId: string, userId: string) {
   const result = await SessionModel.findOneAndDelete({
     _id: sessionId,
@@ -56,9 +52,7 @@ async function deleteSession(sessionId: string, userId: string) {
   return result;
 }
 
-// Iniciar uma sessão (via fila RabbitMQ)
 async function startSession(sessionId: string) {
-  const channel = getRabbitChannel();
   const message = {
     action: "startSession",
     sessionId,
@@ -68,9 +62,7 @@ async function startSession(sessionId: string) {
   return { message: "Session start request sent to queue" };
 }
 
-// Parar uma sessão (via fila RabbitMQ)
 async function stopSession(sessionId: string, userId: string) {
-  const channel = getRabbitChannel();
   const message = {
     action: "stopSession",
     sessionId,
@@ -81,7 +73,6 @@ async function stopSession(sessionId: string, userId: string) {
   return { message: "Session stop request sent to queue" };
 }
 
-// Reestabelecer conexão WebSocket para um usuário (a lógica pode ser implementada depois)
 async function reconnectUserSocket(sessionId: string) {
   const session = await SessionModel.findById(sessionId);
   if (!session) {

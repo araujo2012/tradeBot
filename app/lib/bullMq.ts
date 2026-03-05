@@ -13,9 +13,9 @@ export const activateBotQueue = new Queue(ACTIVATE_BOT, {
   connection: bullRedis as any,
 });
 
-export const activateBotWorker = new Worker(
+new Worker(
   ACTIVATE_BOT,
-  async (job) => {
+  async (job: any) => {
     const { botId } = job.data as { botId: string; action: string };
     switch (job.name) {
       case "runManagerBot":

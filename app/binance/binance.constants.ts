@@ -1,5 +1,3 @@
-// app/binance/binance.constants.ts
-
 export const BASE_URL = "https://api.binance.com/api/v3/";
 
 export const VALID_INTERVALS = [
@@ -20,7 +18,6 @@ export const VALID_INTERVALS = [
   "1M",
 ];
 
-// Símbolos válidos com sufixo BRL
 export const VALID_SYMBOLS = [
   "BTCBRL",
   "ETHBRL",

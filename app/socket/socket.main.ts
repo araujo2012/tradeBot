@@ -17,7 +17,7 @@ export function getBinanceSocket(sessionId: string): WebSocket | null {
 }
 
 export function initializeBinanceSocket(sessionId: string): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const ws = new WebSocket("wss://ws-api.binance.com:443/ws-api/v3");
 
     ws.on("open", () => {
@@ -49,7 +49,6 @@ export function initializeBinanceSocket(sessionId: string): Promise<void> {
         });
         if (msg?.id && msg?.status === 200 && msg?.result?.status === "NEW") {
           handlePlaceOrderResponse(msg);
-        } else if (msg?.event?.e === "outboundAccountPosition") {
         } else if (msg?.event?.e === "executionReport") {
           handleExecutionReport(msg);
         } else {
@@ -108,7 +107,6 @@ async function handleSocketFailure(sessionId: string, reason: string) {
     } catch (err) {
       console.error(`❌ Falha ao reconectar sessão ${sessionId}`, err);
     } finally {
-      // ✅ AGORA sim é seguro liberar
       reconnectingMap.delete(sessionId);
     }
   }, delay);

@@ -4,14 +4,12 @@ import { readFileSync } from "fs";
 import path from "path";
 import { getBinanceSocket, initializeBinanceSocket } from "./socket.main";
 import { redis } from "../lib/redis";
-import { OrderEntry } from "..//order/order.type";
+import { OrderEntry } from "../order/order.type";
 import { WebSocket } from "ws";
 import { WebsocketDataModel } from "../../models/websocketData";
-import { OrderModel } from "../../models/order";
 import { BinanceOrderResponse } from "../binance/binance.interface";
 import { logger } from "../lib/pino";
 
-// Lê e prepara a chave privada Ed25519
 const PRIVATE_KEY_PATH = path.resolve(
   __dirname,
   "../../scripts/private_key.pem"
@@ -41,8 +39,7 @@ async function getOrSetOffset(): Promise<number> {
 
   const { data } = await axios.get("https://api.binance.com/api/v3/time");
   const offset = Date.now() - data.serverTime;
-
-  await redis.set(redisKey, offset.toString(), "EX", 3600); // TTL = 1h
+  await redis.set(redisKey, offset.toString(), "EX", 3600);
   return offset;
 }
 
@@ -99,9 +96,7 @@ export async function socketOrderPlace({
         socket.off("message", handleMessage);
 
         resolve(parsed);
-      } catch {
-        // ignorar mensagens inválidas
-      }
+      } catch {}
     };
     WebsocketDataModel.create({
       sessionId,
@@ -136,12 +131,8 @@ export async function socketOrderReplace({
   if (!socket) {
     throw new Error("Failed to initialize Binance socket");
   }
-
-  // Obter offset do timestamp
   const offset = await getOrSetOffset();
   const timestamp = Date.now() - offset;
-
-  // Preparar os parâmetros da ordem
   const params: any = {
     apiKey,
     cancelReplaceMode: "STOP_ON_FAILURE",
@@ -156,10 +147,7 @@ export async function socketOrderReplace({
     type: "LIMIT",
   };
 
-  // Assinar os parâmetros
   params.signature = signPayload(params);
-
-  // Criar a mensagem para o socket
   const message = {
     id: clientId,
     method: "order.cancelReplace",
@@ -184,9 +172,7 @@ export async function socketOrderReplace({
         socket.off("message", handleMessage);
 
         resolve(parsed);
-      } catch {
-        // ignorar mensagens inválidas
-      }
+      } catch {}
     };
     WebsocketDataModel.create({
       sessionId,
@@ -226,9 +212,7 @@ export async function socketUserStream(sessionId: string): Promise<any> {
         socket.off("message", handleMessage);
 
         resolve(parsed);
-      } catch {
-        // ignorar mensagens inválidas
-      }
+      } catch {}
     };
     WebsocketDataModel.create({
       sessionId,
@@ -284,9 +268,7 @@ export async function socketLogon({
         }
 
         resolve(parsed);
-      } catch {
-        // ignorar mensagens inválidas
-      }
+      } catch {}
     };
     WebsocketDataModel.create({
       sessionId,
@@ -309,7 +291,6 @@ export async function socketOrderCancel({
   origClientOrderId: string;
   sessionId: string;
 }): Promise<BinanceOrderResponse> {
-  // Obter ou inicializar o socket da Binance
   let socket = getBinanceSocket(sessionId);
   if (!socket) {
     await initializeBinanceSocket(sessionId);
@@ -320,11 +301,8 @@ export async function socketOrderCancel({
     throw new Error("Failed to initialize Binance socket");
   }
 
-  // Obter offset do timestamp
   const offset = await getOrSetOffset();
   const timestamp = Date.now() - offset;
-
-  // Preparar os parâmetros do cancelamento
   const params: any = {
     apiKey,
     origClientOrderId,
@@ -356,9 +334,7 @@ export async function socketOrderCancel({
         socket.off("message", handleMessage);
 
         resolve(parsed);
-      } catch {
-        // ignorar mensagens inválidas
-      }
+      } catch {}
     };
     WebsocketDataModel.create({
       sessionId,
