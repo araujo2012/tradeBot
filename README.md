@@ -2,6 +2,10 @@
 
 API para gerenciamento de WebSockets da Binance para trading automatizado.
 
+## Documentação técnica
+
+O mapa hierárquico da arquitetura, das funções e dos modelos está em [`PROJECT-MAP.md`](PROJECT-MAP.md). Comece por esse índice para navegar da visão geral até a documentação específica de cada pasta.
+
 ## Instalação
 
 ```bash
