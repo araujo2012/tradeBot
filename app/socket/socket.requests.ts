@@ -11,8 +11,8 @@ import { BinanceOrderResponse } from "../binance/binance.interface";
 import { logger } from "../lib/pino";
 
 const PRIVATE_KEY_PATH = path.resolve(
-  __dirname,
-  "../../scripts/private_key.pem"
+  process.env.BINANCE_PRIVATE_KEY_PATH ||
+    path.resolve(__dirname, "../../scripts/private_key.pem")
 );
 const privateKeyPem = readFileSync(PRIVATE_KEY_PATH, "utf8");
 const privateKey = crypto.createPrivateKey({

@@ -1,6 +1,10 @@
 import { sendToActivateBotQueue } from "../lib/bullMq";
 import { OrderModel, OrderDocument } from "../../models/order";
 
+const PARTIAL_FILL_GRACE_MS = Number(
+  process.env.PARTIAL_FILL_GRACE_MS || 60_000
+);
+
 export async function handlePlaceOrderResponse(response: any) {
   const { id, result } = response;
   const { clientOrderId, status } = result || {};
@@ -71,7 +75,9 @@ async function handleExecutionReportManager({
     order.executedQtd = executed;
     order.status = "executed";
     await order.save();
-    await new Promise((resolve) => setTimeout(resolve, 60_000));
+    await new Promise((resolve) =>
+      setTimeout(resolve, PARTIAL_FILL_GRACE_MS)
+    );
     sendToActivateBotQueue({
       action: "runManagerBot",
       botId: order.botId.toString(),

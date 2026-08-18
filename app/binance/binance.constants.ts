@@ -1,4 +1,9 @@
-export const BASE_URL = "https://api.binance.com/api/v3/";
+const configuredBaseUrl =
+  process.env.BINANCE_REST_URL || "https://api.binance.com/api/v3/";
+
+export const BASE_URL = configuredBaseUrl.endsWith("/")
+  ? configuredBaseUrl
+  : `${configuredBaseUrl}/`;
 
 export const VALID_INTERVALS = [
   "1m",

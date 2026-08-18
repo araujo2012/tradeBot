@@ -7,7 +7,11 @@
     "dev": "ts-node-dev --respawn --transpile-only main.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "jest"
+    "test": "jest",
+    "test:e2e:infra:up": "docker compose -p tradebot-e2e -f docker-compose.e2e.yml up -d --wait",
+    "test:e2e:infra:down": "docker compose -p tradebot-e2e -f docker-compose.e2e.yml down -v --remove-orphans",
+    "test:e2e:spec": "jest --config jest.e2e.config.js --runInBand",
+    "test:e2e": "node e2e/run-e2e.js"
   },
   "dependencies": {
     "@types/agenda": "^4.1.4",

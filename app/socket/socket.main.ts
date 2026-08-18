@@ -7,6 +7,8 @@ import { sessionService } from "../session/session.service";
 import { WebsocketDataModel } from "../../models/websocketData";
 import { logger } from "../lib/pino";
 const { reconnectUserSocket } = sessionService;
+const BINANCE_WS_URL =
+  process.env.BINANCE_WS_URL || "wss://ws-api.binance.com:443/ws-api/v3";
 const socketMap = new Map<string, WebSocket>();
 const lastPingMap = new Map<string, number>();
 const reconnectingMap = new Set<string>();
@@ -18,7 +20,7 @@ export function getBinanceSocket(sessionId: string): WebSocket | null {
 
 export function initializeBinanceSocket(sessionId: string): Promise<void> {
   return new Promise((resolve) => {
-    const ws = new WebSocket("wss://ws-api.binance.com:443/ws-api/v3");
+    const ws = new WebSocket(BINANCE_WS_URL);
 
     ws.on("open", () => {
       socketMap.set(sessionId, ws);
