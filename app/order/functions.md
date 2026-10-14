@@ -1,32 +1,15 @@
-# Funções de `app/order`
+# `app/order/`
 
-## `normalizeValue`
+Resumo: tipos, constantes e utilitários puros de ordens.
 
-Arquivo: [`app/order/order.utils.ts`](order.utils.ts)
+## Arquivos
 
-```ts
-normalizeValue({
-  value: number,
-  decimal: number,
-  isRoundUp: boolean,
-}): number
-```
+### `order.constants.ts`
+- `directionList` — direções possíveis (`buy`, `sell`) (exportada)
+- `activeStatus` — status considerados ativos (exportada)
 
-Multiplica por `10 ** decimal`, usa `Math.ceil()` quando `isRoundUp` é `true` e `Math.floor()` quando é `false`, e divide novamente pelo mesmo fator.
+### `order.type.ts`
+- `OrderEntry` — dados de entrada para criar uma ordem (exportada)
 
-```ts
-normalizeValue({ value: 10.129, decimal: 2, isRoundUp: false }); // 10.12
-normalizeValue({ value: 10.121, decimal: 2, isRoundUp: true });  // 10.13
-```
-
-É usada para arredondar preço e quantidade em `handleCreateOrder()`, gerar preços/quantidades no manager e corrigir quantidade quando o valor mínimo da ordem não é atingido.
-
-Não valida número negativo, `decimal` negativo, `NaN` ou `Infinity`.
-
-## Constantes e tipos
-
-- `directionList`: `['buy', 'sell']`.
-- `activeStatus`: `['active', 'executed', 'partialExecuted']`.
-- `OrderEntry`: `botId`, `mode`, `direction`, `price`, `quantity`, `symbol` e `position` opcional (`1 | 2 | 3`).
-
-
+### `order.utils.ts`
+- `normalizeValue` — arredonda preço/quantidade conforme a precisão do símbolo (exportada)
