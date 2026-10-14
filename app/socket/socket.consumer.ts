@@ -12,6 +12,7 @@ import {
   socketOrderReplace,
 } from "./socket.requests";
 import { getBinanceSocket } from "./socket.main";
+import { markOrderCanceled } from "./socket.responses";
 import { sendToUser } from "../../websocket";
 import { OrderEntry } from "../order/order.type";
 import { normalizeValue } from "../order/order.utils";
@@ -176,12 +177,7 @@ async function handleCancelOrder({
       binanceId: result?.result?.origClientOrderId,
     });
     if (order) {
-      if (Number(result?.result?.executedQty) > 0) {
-        await handleExecutedOrder(order, result?.result);
-      } else {
-        order.status = "closed";
-        await order.save();
-      }
+      await markOrderCanceled(order, Number(result?.result?.executedQty));
       await decrementManagerInFlight(order.botId.toString());
       sendToActivateBotQueue({
         action: "runManagerBot",

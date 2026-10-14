@@ -34,6 +34,21 @@ yarn build
 yarn start
 ```
 
+### Teste E2E local
+
+O teste E2E sobe uma instância isolada de MongoDB, RabbitMQ e Redis com Docker
+Compose e usa uma Binance fake local. O primeiro comando sobe a infraestrutura;
+o comando principal também faz o teardown automaticamente.
+
+```bash
+npm run test:e2e:infra:up
+npm run test:e2e
+npm run test:e2e:infra:down
+```
+
+As portas do ambiente E2E são MongoDB `27018`, RabbitMQ `5673` e Redis `6380`.
+Os valores de conexão podem ser copiados de [`.env.e2e.example`](.env.e2e.example).
+
 ## Rotas da API
 
 ### Health Check

@@ -1,6 +1,10 @@
 import { sendToActivateBotQueue } from "../lib/bullMq";
 import { OrderModel, OrderDocument } from "../../models/order";
 
+const PARTIAL_FILL_GRACE_MS = Number(
+  process.env.PARTIAL_FILL_GRACE_MS || 60_000
+);
+
 export async function handlePlaceOrderResponse(response: any) {
   const { id, result } = response;
   const { clientOrderId, status } = result || {};
@@ -24,6 +28,19 @@ export async function handlePlaceOrderResponse(response: any) {
     );
   }
   return response;
+}
+
+// Ordem cancelada na Binance: a parte executada é definitiva e o manager pode contabilizá-la.
+export async function markOrderCanceled(
+  order: OrderDocument,
+  executedQty: number
+) {
+  if (order.status === "closed") return;
+  if (executedQty > order.executedQtd) {
+    order.executedQtd = executedQty;
+  }
+  order.status = order.executedQtd > 0 ? "partialExecuted" : "closed";
+  await order.save();
 }
 
 export async function handleExecutionReport(response: any) {
@@ -59,8 +76,7 @@ async function handleExecutionReportManager({
 }) {
   if (status === "NEW") return;
   if (status === "CANCELED") {
-    order.status = executed > 0 ? "executed" : "closed";
-    await order.save();
+    await markOrderCanceled(order, executed);
     sendToActivateBotQueue({
       action: "runManagerBot",
       botId: order.botId.toString(),
@@ -71,7 +87,9 @@ async function handleExecutionReportManager({
     order.executedQtd = executed;
     order.status = "executed";
     await order.save();
-    await new Promise((resolve) => setTimeout(resolve, 60_000));
+    await new Promise((resolve) =>
+      setTimeout(resolve, PARTIAL_FILL_GRACE_MS)
+    );
     sendToActivateBotQueue({
       action: "runManagerBot",
       botId: order.botId.toString(),
