@@ -83,6 +83,21 @@ Possui timestamps. É preenchido por `logAndSendToQueue()`.
 
 Possui timestamps. É preenchido pelas requisições e pelo listener de mensagens em `socket.main.ts`.
 
+## `DebugerModel` — `models/debuger.ts`
+
+Coleção `debuger`.
+
+| Campo | Tipo |
+|---|---|
+| `sessionId` | string |
+| `method` | string, método da WebSocket API (ex.: `order.cancel`) |
+| `requestId` | string, `id` do request enviado |
+| `params` | objeto livre, parâmetros enviados sem `apiKey` e `signature` |
+| `status` | number, status da resposta (ex.: `400`) |
+| `error` | objeto livre, `{ code, msg }` retornado pela Binance |
+
+Possui timestamps. É preenchido por `saveBinanceError()` em `socket.requests.ts` quando a resposta não tem status `200`.
+
 ## Relacionamentos observados
 
 ```text
@@ -90,6 +105,7 @@ User ──< Session ──< Bot ──< Order
                          └── SymbolConfig (por symbol, sem ref)
 
 Session ──< WebsocketData
+Session ──< Debuger
 RabbitData é independente e registra a fila/payload.
 ```
 

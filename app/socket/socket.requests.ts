@@ -7,6 +7,7 @@ import { redis } from "../lib/redis";
 import { OrderEntry } from "../order/order.type";
 import { WebSocket } from "ws";
 import { WebsocketDataModel } from "../../models/websocketData";
+import { DebugerModel } from "../../models/debuger";
 import { BinanceOrderResponse } from "../binance/binance.interface";
 import { logger } from "../lib/pino";
 
@@ -30,6 +31,23 @@ function signPayload(params: Record<string, string | number>): string {
     privateKey
   );
   return signature.toString("base64");
+}
+
+function saveBinanceError(
+  sessionId: string,
+  message: { id: string; method: string; params?: Record<string, any> },
+  response: any
+) {
+  if (response.status === 200) return;
+  const { apiKey, signature, ...params } = message.params || {};
+  DebugerModel.create({
+    sessionId,
+    method: message.method,
+    requestId: message.id,
+    params,
+    status: response.status,
+    error: response.error,
+  }).catch((err) => logger.error({ err }, "Failed to save Binance error"));
 }
 
 async function getOrSetOffset(): Promise<number> {
@@ -94,6 +112,7 @@ export async function socketOrderPlace({
 
         clearTimeout(timeout);
         socket.off("message", handleMessage);
+        saveBinanceError(sessionId, message, parsed);
 
         resolve(parsed);
       } catch {}
@@ -170,6 +189,7 @@ export async function socketOrderReplace({
 
         clearTimeout(timeout);
         socket.off("message", handleMessage);
+        saveBinanceError(sessionId, message, parsed);
 
         resolve(parsed);
       } catch {}
@@ -210,6 +230,7 @@ export async function socketUserStream(sessionId: string): Promise<any> {
 
         clearTimeout(timeout);
         socket.off("message", handleMessage);
+        saveBinanceError(sessionId, message, parsed);
 
         resolve(parsed);
       } catch {}
@@ -259,6 +280,7 @@ export async function socketLogon({
 
         clearTimeout(timeout);
         socket.off("message", handleMessage);
+        saveBinanceError(sessionId, message, parsed);
 
         if (parsed.code && typeof parsed.code === "number") {
           const msg = parsed.msg?.toLowerCase() || "";
@@ -332,6 +354,7 @@ export async function socketOrderCancel({
 
         clearTimeout(timeout);
         socket.off("message", handleMessage);
+        saveBinanceError(sessionId, message, parsed);
 
         resolve(parsed);
       } catch {}
@@ -391,6 +414,7 @@ export async function socketOrderStatus({
 
         clearTimeout(timeout);
         socket.off("message", handleMessage);
+        saveBinanceError(sessionId, message, parsed);
         resolve(parsed);
       } catch {}
     };

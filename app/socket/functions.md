@@ -29,6 +29,7 @@ Conexões WebSocket por sessão, ping e reconexão (URL via `BINANCE_WS_URL`).
 ### `socket.requests.ts`
 Requests assinados (Ed25519) para a WebSocket API.
 - `signPayload` — assina os parâmetros ordenados (interna)
+- `saveBinanceError` — grava na coleção `debuger` a operação e o erro quando a resposta não tem status `200` (interna)
 - `getOrSetOffset` — offset de relógio com a Binance, em cache no Redis (interna)
 - `socketOrderPlace` — `order.place` (exportada)
 - `socketOrderReplace` — `order.cancelReplace` (exportada)
@@ -40,5 +41,6 @@ Requests assinados (Ed25519) para a WebSocket API.
 ### `socket.responses.ts`
 Tratamento de respostas e eventos.
 - `handlePlaceOrderResponse` — vincula `binanceId` e atualiza o status da ordem (exportada)
+- `markOrderCanceled` — marca ordem cancelada como `partialExecuted` (se houve execução) ou `closed`, sem reabrir ordem fechada (exportada)
 - `handleExecutionReport` — trata `executionReport` do user stream (exportada)
 - `handleExecutionReportManager` — atualiza a ordem do manager e reenfileira o bot após `PARTIAL_FILL_GRACE_MS` em fills parciais (interna)

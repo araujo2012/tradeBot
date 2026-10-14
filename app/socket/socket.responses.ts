@@ -30,6 +30,19 @@ export async function handlePlaceOrderResponse(response: any) {
   return response;
 }
 
+// Ordem cancelada na Binance: a parte executada é definitiva e o manager pode contabilizá-la.
+export async function markOrderCanceled(
+  order: OrderDocument,
+  executedQty: number
+) {
+  if (order.status === "closed") return;
+  if (executedQty > order.executedQtd) {
+    order.executedQtd = executedQty;
+  }
+  order.status = order.executedQtd > 0 ? "partialExecuted" : "closed";
+  await order.save();
+}
+
 export async function handleExecutionReport(response: any) {
   const event = response?.event;
   if (!event) return;
@@ -63,8 +76,7 @@ async function handleExecutionReportManager({
 }) {
   if (status === "NEW") return;
   if (status === "CANCELED") {
-    order.status = executed > 0 ? "executed" : "closed";
-    await order.save();
+    await markOrderCanceled(order, executed);
     sendToActivateBotQueue({
       action: "runManagerBot",
       botId: order.botId.toString(),

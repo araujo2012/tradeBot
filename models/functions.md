@@ -8,6 +8,9 @@ Resumo: schemas e models Mongoose (um arquivo por coleção) e os tipos `Documen
 - `BotDocument` — documento hidratado de bot (exportada)
 - `BotModel` — model `Bot` (exportada)
 
+### `debuger.ts`
+- `DebugerModel` — model `Debuger` (coleção `debuger`): erros retornados pela Binance com a operação enviada (exportada)
+
 ### `order.ts`
 - `OrderType` — formato da ordem (exportada)
 - `OrderDocument` — documento hidratado de ordem (exportada)
