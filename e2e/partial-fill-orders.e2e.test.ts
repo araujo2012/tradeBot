@@ -9,8 +9,8 @@ import {
   ApplicationProcess,
   createTestPrivateKey,
   getFreePort,
-} from "./support/app-process";
-import { FakeBinance, FakeBinanceCommand } from "./support/fake-binance";
+} from "./app-runner/app-process";
+import { FakeBinance, FakeBinanceCommand } from "./fake-binance/fake-binance";
 
 const MONGO_URI = process.env.MONGO_URI!;
 const RABBITMQ_URI = process.env.RABBITMQ_URI!;

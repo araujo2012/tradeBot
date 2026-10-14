@@ -6,7 +6,8 @@ Resumo: testes ponta a ponta. Sobem a aplicação real como processo filho contr
 
 | Pasta | Resumo |
 |---|---|
-| [`support/`](support/functions.md) | Binance falsa e controle do processo da aplicação |
+| [`fake-binance/`](fake-binance/functions.md) | Binance falsa (REST + WebSocket) usada nos testes |
+| [`app-runner/`](app-runner/functions.md) | sobe e controla a aplicação como processo filho |
 
 ## Arquivos
 
