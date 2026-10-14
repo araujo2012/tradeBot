@@ -44,6 +44,10 @@ function asString(value: number) {
   return value.toString();
 }
 
+function isOpenOrder(order: FakeOrder) {
+  return order.status === "NEW" || order.status === "PARTIALLY_FILLED";
+}
+
 export class FakeBinance {
   private readonly httpServer = http.createServer(
     (request, response) => void this.handleHttpRequest(request, response)
@@ -122,8 +126,7 @@ export class FakeBinance {
     status: Extract<FakeOrderStatus, "PARTIALLY_FILLED" | "FILLED">;
     executedQty: number;
   }) {
-    const order = this.orders.get(clientOrderId);
-    if (!order) throw new Error(`Fake order not found: ${clientOrderId}`);
+    const order = this.findOrder(clientOrderId);
 
     order.executedQty = executedQty;
     order.status = status;
@@ -146,6 +149,11 @@ export class FakeBinance {
     }
   }
 
+  // Simula um cancelamento feito fora do bot cujo evento não chegou à aplicação.
+  cancelOrderWithoutNotifying(clientOrderId: string) {
+    this.findOrder(clientOrderId).status = "CANCELED";
+  }
+
   async close() {
     for (const client of this.clients) client.terminate();
     this.clients.clear();
@@ -164,6 +172,12 @@ export class FakeBinance {
       }
       this.httpServer.close(() => resolve());
     });
+  }
+
+  private findOrder(clientOrderId: string) {
+    const order = this.orders.get(clientOrderId);
+    if (!order) throw new Error(`Fake order not found: ${clientOrderId}`);
+    return order;
   }
 
   private async handleHttpRequest(
@@ -277,8 +291,9 @@ export class FakeBinance {
     params: Record<string, any>
   ) {
     const order = this.orders.get(String(params.origClientOrderId));
-    if (!order) {
-      this.send(client, id, 400, undefined, -2011, "Unknown order");
+    // A Binance só cancela ordens abertas; já canceladas ou executadas retornam -2011.
+    if (!order || !isOpenOrder(order)) {
+      this.send(client, id, 400, undefined, -2011, "Unknown order sent.");
       return;
     }
     order.status = "CANCELED";
@@ -338,7 +353,7 @@ export class FakeBinance {
       icebergQty: "0",
       time: Date.now(),
       updateTime: Date.now(),
-      isWorking: order.status === "NEW" || order.status === "PARTIALLY_FILLED",
+      isWorking: isOpenOrder(order),
       workingTime: Date.now(),
       origQuoteOrderQty: "0",
       selfTradePreventionMode: "NONE",
@@ -358,7 +373,7 @@ export class FakeBinance {
         id,
         status,
         ...(result === undefined ? {} : { result }),
-        ...(code === undefined ? {} : { code, msg }),
+        ...(code === undefined ? {} : { error: { code, msg } }),
       })
     );
   }

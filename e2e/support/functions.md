@@ -1,0 +1,18 @@
+# `e2e/support/`
+
+Resumo: helpers compartilhados pelos testes e2e — conexão e limpeza da infraestrutura, fixture do bot manager e execução da aplicação contra a Binance falsa.
+
+## Arquivos
+
+### `scenario.ts`
+- `PARTIAL_FILL_GRACE_MS` — espera de fill parcial usada pela aplicação nos testes (exportada)
+- `delay` — espera N ms (exportada)
+- `waitFor` — repete uma verificação até passar ou estourar o tempo (exportada)
+- `purgeRabbitQueues` — esvazia as filas do RabbitMQ (interna)
+- `resetInfrastructure` — limpa Mongo, Redis e filas entre testes (interna)
+- `useE2EInfrastructure` — registra os hooks do Jest que conectam e limpam a infraestrutura (exportada)
+- `ScenarioFixture` — ids e quantidades do cenário (exportada)
+- `createScenarioFixture` — cria a sessão do cenário (interna)
+- `populateScenarioFixture` — cria bot, config do símbolo e ordens iniciais no banco e na Binance falsa (interna)
+- `isCancellationOf` — indica se um comando cancela determinada ordem (exportada)
+- `runWithApplication` — sobe a aplicação, executa o cenário e encerra (exportada)
