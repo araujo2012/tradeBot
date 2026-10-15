@@ -59,6 +59,7 @@ export class FakeBinance {
   private sequence = 0;
   private nextOrderId = 50_000;
   private port = 0;
+  private marketPrice?: number;
 
   async start() {
     this.httpServer.on("upgrade", (request, socket, head) => {
@@ -95,6 +96,15 @@ export class FakeBinance {
     };
     this.orders.set(order.clientOrderId, order);
     return order;
+  }
+
+  // Ordens novas que cruzam este preço são executadas na hora, como na Binance real.
+  setMarketPrice(price: number) {
+    this.marketPrice = price;
+  }
+
+  getOrders() {
+    return [...this.orders.values()].map((order) => ({ ...order }));
   }
 
   getCommands() {
@@ -178,6 +188,38 @@ export class FakeBinance {
     const order = this.orders.get(clientOrderId);
     if (!order) throw new Error(`Fake order not found: ${clientOrderId}`);
     return order;
+  }
+
+  private crossesMarket(order: FakeOrder) {
+    if (this.marketPrice === undefined) return false;
+    return order.side === "SELL"
+      ? order.price <= this.marketPrice
+      : order.price >= this.marketPrice;
+  }
+
+  private fillIfCrossesMarket(order: FakeOrder) {
+    if (!this.crossesMarket(order)) return false;
+    order.executedQty = order.quantity;
+    order.status = "FILLED";
+    return true;
+  }
+
+  // A Binance não garante a ordem entre a resposta e o executionReport. Aqui o evento
+  // chega antes da resposta, quando a aplicação ainda não gravou a ordem (pior caso).
+  private respondWithNewOrder(
+    client: WebSocket,
+    id: string,
+    order: FakeOrder,
+    buildResult: (order: FakeOrder) => any
+  ) {
+    if (this.fillIfCrossesMarket(order)) {
+      this.emitExecutionReport({
+        clientOrderId: order.clientOrderId,
+        status: "FILLED",
+        executedQty: order.quantity,
+      });
+    }
+    this.send(client, id, 200, buildResult(order));
   }
 
   private async handleHttpRequest(
@@ -282,7 +324,9 @@ export class FakeBinance {
       price: asNumber(params.price),
       quantity: asNumber(params.quantity),
     });
-    this.send(client, id, 200, this.toOrderResult(order));
+    this.respondWithNewOrder(client, id, order, (placed) =>
+      this.toOrderResult(placed)
+    );
   }
 
   private handleOrderCancel(
@@ -323,15 +367,15 @@ export class FakeBinance {
       quantity: asNumber(params.quantity),
     });
 
-    this.send(client, id, 200, {
+    this.respondWithNewOrder(client, id, replacement, (placed) => ({
       cancelResult: "SUCCESS",
       cancelResponse: {
         ...this.toOrderResult(original),
         origClientOrderId: original.clientOrderId,
       },
       newOrderResult: "SUCCESS",
-      newOrderResponse: this.toOrderResult(replacement),
-    });
+      newOrderResponse: this.toOrderResult(placed),
+    }));
   }
 
   private toOrderResult(order: FakeOrder) {

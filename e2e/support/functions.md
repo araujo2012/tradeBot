@@ -14,5 +14,6 @@ Resumo: helpers compartilhados pelos testes e2e — conexão e limpeza da infrae
 - `ScenarioFixture` — ids e quantidades do cenário (exportada)
 - `createScenarioFixture` — cria a sessão do cenário (interna)
 - `populateScenarioFixture` — cria bot, config do símbolo e ordens iniciais no banco e na Binance falsa (interna)
+- `triggerManagerRun` — enfileira uma rodada do manager na fila `activate-bot` do BullMQ (exportada)
 - `isCancellationOf` — indica se um comando cancela determinada ordem (exportada)
 - `runWithApplication` — sobe a aplicação, executa o cenário e encerra (exportada)

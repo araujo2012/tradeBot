@@ -24,5 +24,11 @@ Cenário de ordens parcialmente executadas.
 - `isOrderMutation` — indica se um comando da Binance falsa altera ordens (interna)
 - `readFinalState` — lê o estado final de ordens/bot no banco (interna)
 
+### `immediate-fill-replace.e2e.test.ts`
+Reposição (`order.cancelReplace`) que cruza o mercado e é executada na hora, de compra e de venda: o `crypto` do bot deve bater com o executado na exchange e devem sobrar só uma compra e uma venda ativas.
+- `filledOnExchange` — ordens executadas na Binance falsa (interna)
+- `expectedCrypto` — `crypto` esperado a partir das execuções na exchange (interna)
+- `readFinalState` — lê ordens ativas, ordens não liquidadas e o `crypto` do bot (interna)
+
 ### `binance-errors.e2e.test.ts`
 Tratamento de erros retornados pela Binance: espera um registro de debug na coleção `debuger` quando um request é rejeitado.
