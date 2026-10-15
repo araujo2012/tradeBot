@@ -57,6 +57,12 @@ function isOpenOrder(order: FakeOrder) {
   return order.status === "NEW" || order.status === "PARTIALLY_FILLED";
 }
 
+// Mesmo erro que a Binance real devolve no order.place quando falta saldo.
+const INSUFFICIENT_BALANCE_ERROR = {
+  code: -2010,
+  msg: "Account has insufficient balance for requested action.",
+};
+
 export class FakeBinance {
   private readonly httpServer = http.createServer(
     (request, response) => void this.handleHttpRequest(request, response)
@@ -72,6 +78,7 @@ export class FakeBinance {
   private marketPrice?: number;
   private fillReportTiming: FillReportTiming = "after-response";
   private fillReportGapMs = 0;
+  private readonly freeBalances = new Map<string, number>();
 
   async start() {
     this.httpServer.on("upgrade", (request, socket, head) => {
@@ -120,6 +127,12 @@ export class FakeBinance {
   setFillReportTiming(timing: FillReportTiming, gapMs: number) {
     this.fillReportTiming = timing;
     this.fillReportGapMs = gapMs;
+  }
+
+  // Saldo livre informado pelo account.status. Com saldo de BRL definido, order.place
+  // recusa compras acima dele. O saldo é fixo: ordens aceitas não o bloqueiam.
+  setFreeBalance(asset: string, free: number) {
+    this.freeBalances.set(asset, free);
   }
 
   getOrders() {
@@ -212,6 +225,12 @@ export class FakeBinance {
     const order = this.orders.get(clientOrderId);
     if (!order) throw new Error(`Fake order not found: ${clientOrderId}`);
     return order;
+  }
+
+  private hasBalanceFor(params: Record<string, any>) {
+    const freeBrl = this.freeBalances.get("BRL");
+    if (freeBrl === undefined || String(params.side) !== "BUY") return true;
+    return asNumber(params.price) * asNumber(params.quantity) <= freeBrl;
   }
 
   private crossesMarket(order: FakeOrder) {
@@ -332,6 +351,9 @@ export class FakeBinance {
       case "order.cancelReplace":
         await this.handleOrderCancelReplace(client, message.id, command.params);
         return;
+      case "account.status":
+        this.handleAccountStatus(client, message.id);
+        return;
       default:
         this.send(client, message.id, 400, undefined, -1000, "Unknown method");
     }
@@ -355,6 +377,11 @@ export class FakeBinance {
     id: string,
     params: Record<string, any>
   ) {
+    if (!this.hasBalanceFor(params)) {
+      const { code, msg } = INSUFFICIENT_BALANCE_ERROR;
+      this.send(client, id, 400, undefined, code, msg);
+      return;
+    }
     const order = this.registerOrder({
       clientOrderId: `fake-${this.nextOrderId}`,
       symbol: String(params.symbol),
@@ -414,6 +441,14 @@ export class FakeBinance {
       newOrderResult: "SUCCESS",
       newOrderResponse: this.toOrderResult(placed),
     }));
+  }
+
+  // Responde como account.status com omitZeroBalances: só ativos com saldo.
+  private handleAccountStatus(client: WebSocket, id: string) {
+    const balances = [...this.freeBalances]
+      .filter(([, free]) => free > 0)
+      .map(([asset, free]) => ({ asset, free: asString(free), locked: "0" }));
+    this.send(client, id, 200, { accountType: "SPOT", balances });
   }
 
   private toOrderResult(order: FakeOrder) {

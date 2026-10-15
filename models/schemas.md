@@ -16,7 +16,7 @@ Campos principais:
 | `limit` | number | sim, default `0` |
 | `mode` | `administrator`, `manager` | sim |
 | `target` | number | sim, default `0` |
-| `brl` | number | sim, default `0` |
+| `brl` | number — saldo livre em BRL da conta Binance da sessão, atualizado por `app/balance` | sim, default `0` |
 | `crypto` | number | sim, default `0` |
 | `lastExecutionTime` | Date | opcional |
 

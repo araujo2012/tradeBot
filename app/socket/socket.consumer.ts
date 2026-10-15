@@ -20,6 +20,13 @@ import { stopBotJob } from "../bot/bot.jobs";
 import { logger } from "../lib/pino";
 import { decrementManagerInFlight } from "../bot/bot.utils";
 import { sendToActivateBotQueue } from "../lib/bullMq";
+import { BinanceError } from "../binance/binance.interface";
+import {
+  getOrderBrlCost,
+  hasBalanceForOrder,
+  isInsufficientBalanceError,
+  refreshAccountBalance,
+} from "../balance/balance.service";
 
 const RATE_LIMIT = 5;
 const INTERVAL_MS = 1000 / RATE_LIMIT;
@@ -115,6 +122,14 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
       isRoundUp: order.direction === "sell",
       decimal: symbolConfig.priceDecimal,
     });
+    if (!(await hasBalanceForOrder({ order, bot, apiKey }))) {
+      logger.warn(
+        { botId: order.botId, cost: getOrderBrlCost(order) },
+        "Insufficient balance, order not sent"
+      );
+      await decrementManagerInFlight(order.botId.toString());
+      return;
+    }
     const clientId = crypto.randomUUID();
     const orderData = {
       ...order,
@@ -132,15 +147,17 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
       `Order ${savedOrder ? "updated" : "created"}: ${savedOrder?._id}`
     );
 
-    const { status, result } = await socketOrderPlace({
+    const response = await socketOrderPlace({
       order: { ...orderData, apiKey },
       clientId,
     });
 
-    if (status !== 200) {
-      logger.info("status !== 200: ", result);
-    }
     await decrementManagerInFlight(order.botId.toString());
+    if (response.status !== 200) {
+      await handleRejectedOrder(savedOrder, response, apiKey);
+      return;
+    }
+    const { result } = response;
     if (result?.status === "NEW") {
       savedOrder.status = "active";
       savedOrder.binanceId = result.clientOrderId || "";
@@ -152,6 +169,24 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
   } catch (err) {
     console.error("Error creating order:", err);
     throw err;
+  }
+}
+
+// A ordem recusada não existe na Binance. Se faltou saldo, o saldo local estava
+// desatualizado e é atualizado com o da conta.
+async function handleRejectedOrder(
+  order: OrderDocument,
+  response: { error?: BinanceError },
+  apiKey: string
+) {
+  logger.warn({ orderId: order._id, error: response.error }, "Order rejected");
+  order.status = "closed";
+  await order.save();
+  if (isInsufficientBalanceError(response)) {
+    await refreshAccountBalance({
+      sessionId: order.sessionId.toString(),
+      apiKey,
+    });
   }
 }
 

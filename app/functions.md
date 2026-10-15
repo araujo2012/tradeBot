@@ -6,6 +6,7 @@ Resumo: código de domínio. Cada subpasta é um domínio, com arquivos separado
 
 | Pasta | Resumo |
 |---|---|
+| [`balance/`](balance/functions.md) | saldo da conta: conferência antes de comprar e atualização via `account.status` |
 | [`binance/`](binance/functions.md) | REST da Binance (klines), estatísticas, tipos e constantes |
 | [`bot/`](bot/functions.md) | estratégia *manager*/*administrator*, locks de bot em Redis |
 | [`jobs/`](jobs/functions.md) | jobs periódicos do Agenda |

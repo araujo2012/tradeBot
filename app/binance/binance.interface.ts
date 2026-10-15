@@ -75,3 +75,22 @@ export interface BinanceOrderResponse {
   result: OrderResult;
   rateLimits: RateLimit[];
 }
+
+export interface BinanceError {
+  code: number;
+  msg: string;
+}
+
+export interface AccountBalance {
+  asset: string;
+  free: string;
+  locked: string;
+}
+
+export interface BinanceAccountResponse {
+  id: string;
+  status: number;
+  result?: { balances: AccountBalance[] };
+  error?: BinanceError;
+  rateLimits?: RateLimit[];
+}

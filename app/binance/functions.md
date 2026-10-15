@@ -11,6 +11,8 @@ Constantes da API REST.
 - `VALID_SYMBOLS` — símbolos aceitos (exportada)
 - `MAX_LIMIT` — limite máximo de klines por request (exportada)
 - `FIXED_FETCH_LIMIT` — quantidade padrão de klines buscadas (exportada)
+- `NEW_ORDER_REJECTED_CODE` — código `-2010` de ordem nova recusada (exportada)
+- `INSUFFICIENT_BALANCE_MESSAGE` — trecho da mensagem que identifica a recusa por saldo insuficiente (exportada)
 
 ### `binance.interface.ts`
 Tipos de resposta da Binance.
@@ -20,6 +22,9 @@ Tipos de resposta da Binance.
 - `OrderStatus` — enum de status de ordem da Binance (exportada)
 - `OrderResult` — resultado de ordem (exportada)
 - `BinanceOrderResponse` — envelope de resposta de ordem via WebSocket (exportada)
+- `BinanceError` — erro `{ code, msg }` devolvido pela Binance (exportada)
+- `AccountBalance` — saldo de um ativo (`free`/`locked`) (exportada)
+- `BinanceAccountResponse` — envelope de resposta do `account.status` (exportada)
 
 ### `binance.service.ts`
 Chamadas REST.
