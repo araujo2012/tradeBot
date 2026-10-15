@@ -36,6 +36,35 @@ export async function decrementManagerInFlight(botId: string) {
   }
 }
 
+// Sem saldo para a compra, o bot fica parado por este tempo ou até uma ordem dele
+// ser executada, evitando consultar a Binance a cada rodada.
+const INSUFFICIENT_BALANCE_LOCK_SECONDS = 10 * 60;
+
+function insufficientBalanceLockKey(botId: string | Types.ObjectId) {
+  return `bot:insufficient-balance:${normalizeBotId(botId)}`;
+}
+
+export async function lockInsufficientBalance(botId: string | Types.ObjectId) {
+  await redis.set(
+    insufficientBalanceLockKey(botId),
+    "1",
+    "EX",
+    INSUFFICIENT_BALANCE_LOCK_SECONDS
+  );
+}
+
+export async function hasInsufficientBalanceLock(
+  botId: string | Types.ObjectId
+) {
+  return (await redis.exists(insufficientBalanceLockKey(botId))) === 1;
+}
+
+export async function releaseInsufficientBalanceLock(
+  botId: string | Types.ObjectId
+) {
+  await redis.del(insufficientBalanceLockKey(botId));
+}
+
 export async function getMinVarianceBot(minValue: number, money: number) {
   const aboveTax = 0.001 * 4;
   return Math.max(minValue / money, aboveTax);

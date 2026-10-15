@@ -213,6 +213,16 @@ export async function triggerManagerRun(botId: Types.ObjectId) {
   await connection.quit();
 }
 
+// TTL em segundos de uma chave do Redis da aplicação (-2 quando a chave não existe).
+export async function readRedisTtl(key: string) {
+  const connection = new Redis(REDIS_URI);
+  try {
+    return await connection.ttl(key);
+  } finally {
+    await connection.quit();
+  }
+}
+
 export function isCancellationOf(
   command: FakeBinanceCommand,
   clientOrderId: string

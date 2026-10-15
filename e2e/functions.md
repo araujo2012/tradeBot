@@ -32,12 +32,16 @@ Reposição (`order.cancelReplace`) que cruza o mercado e é executada na hora, 
 - `readFinalState` — lê ordens ativas, ordens não liquidadas e o `crypto` do bot (interna)
 
 ### `insufficient-balance.e2e.test.ts`
-Compra do manager sem saldo: a recusa `-2010` da Binance atualiza o `brl` do bot com o saldo da conta; com `brl` local abaixo do custo, a aplicação consulta `account.status` antes de enviar e só envia se a conta tiver saldo.
+Compra do manager sem saldo: a recusa `-2010` da Binance atualiza o `brl` do bot com o saldo da conta; com `brl` local abaixo do custo, a aplicação consulta `account.status` antes de enviar e só envia se a conta tiver saldo. Sem saldo na conta, o bot fica travado por 10 minutos (não roda nem consulta a Binance) até uma ordem dele ser executada.
 - `fillOldBuy` — executa a compra antiga para o manager criar uma compra nova (interna)
 - `setLocalBrl` — define o `brl` do bot no banco (interna)
 - `readBotBrl` — lê o `brl` do bot (interna)
 - `commandsOf` — comandos recebidos pela Binance falsa de um método (interna)
 - `readBuyOrders` — ordens de compra criadas no cenário (interna)
+- `readLockTtl` — TTL do lock de saldo do bot no Redis (interna)
+- `readReplacementSell` — venda reposta pelo manager no lugar da antiga (interna)
+- `runOutOfBalance` — deixa o bot sem saldo local nem na conta e espera ele ser travado (interna)
+- `expectLockedForTenMinutes` — confere que o TTL do lock é de cerca de 10 minutos (interna)
 
 ### `binance-errors.e2e.test.ts`
 Tratamento de erros retornados pela Binance: espera um registro de debug na coleção `debuger` quando um request é rejeitado.

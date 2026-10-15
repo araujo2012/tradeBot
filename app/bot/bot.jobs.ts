@@ -8,6 +8,7 @@ import {
   decrementManagerInFlight,
   getMinVarianceBot,
   handleRunManagerJobQueue,
+  hasInsufficientBalanceLock,
   incrementManagerInFlight,
 } from "./bot.utils";
 import { SessionModel } from "../../models/session";
@@ -16,6 +17,8 @@ import { activeStatus } from "../order/order.constants";
 const botIntervals: Record<string, NodeJS.Timeout> = {};
 
 export async function runManagerJob(botId: string) {
+  // Retorna true para o job terminar sem retry: o bot só volta quando o lock sair.
+  if (await hasInsufficientBalanceLock(botId)) return true;
   const canRun = await handleRunManagerJobQueue(botId);
   if (!canRun) return false;
   try {

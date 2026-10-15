@@ -18,14 +18,17 @@ import { OrderEntry } from "../order/order.type";
 import { normalizeValue } from "../order/order.utils";
 import { stopBotJob } from "../bot/bot.jobs";
 import { logger } from "../lib/pino";
-import { decrementManagerInFlight } from "../bot/bot.utils";
+import {
+  decrementManagerInFlight,
+  releaseInsufficientBalanceLock,
+} from "../bot/bot.utils";
 import { sendToActivateBotQueue } from "../lib/bullMq";
 import { BinanceError } from "../binance/binance.interface";
 import {
   getOrderBrlCost,
   hasBalanceForOrder,
   isInsufficientBalanceError,
-  refreshAccountBalance,
+  refreshBalanceForOrder,
 } from "../balance/balance.service";
 
 const RATE_LIMIT = 5;
@@ -173,7 +176,7 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
 }
 
 // A ordem recusada não existe na Binance. Se faltou saldo, o saldo local estava
-// desatualizado e é atualizado com o da conta.
+// desatualizado: é atualizado com o da conta e o bot fica travado se ainda faltar.
 async function handleRejectedOrder(
   order: OrderDocument,
   response: { error?: BinanceError },
@@ -183,7 +186,9 @@ async function handleRejectedOrder(
   order.status = "closed";
   await order.save();
   if (isInsufficientBalanceError(response)) {
-    await refreshAccountBalance({
+    await refreshBalanceForOrder({
+      order,
+      botId: order.botId.toString(),
       sessionId: order.sessionId.toString(),
       apiKey,
     });
@@ -360,6 +365,7 @@ async function handleExecutedOrderManager(order: OrderDocument, result: any) {
   }
   order.status = "executed";
   await order.save();
+  await releaseInsufficientBalanceLock(order.botId);
 }
 
 async function stopSessionBots(sessionId: string) {

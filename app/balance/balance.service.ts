@@ -4,17 +4,19 @@ import {
   NEW_ORDER_REJECTED_CODE,
 } from "../binance/binance.constants";
 import { AccountBalance, BinanceError } from "../binance/binance.interface";
+import { OrderType } from "../../models/order";
 import { OrderEntry } from "../order/order.type";
 import { socketAccountStatus } from "../socket/socket.requests";
+import { lockInsufficientBalance } from "../bot/bot.utils";
 import { logger } from "../lib/pino";
 
 // Ativo guardado no campo `brl` do bot: todos os símbolos são cotados em BRL.
 const BALANCE_ASSET = "BRL";
 
+type OrderCost = Pick<OrderType, "direction" | "price" | "quantity">;
+
 // BRL que a Binance bloqueia ao aceitar a ordem; vendas bloqueiam cripto, não BRL.
-export function getOrderBrlCost(
-  order: Pick<OrderEntry, "direction" | "price" | "quantity">
-) {
+export function getOrderBrlCost(order: OrderCost) {
   return order.direction === "buy" ? order.price * order.quantity : 0;
 }
 
@@ -36,7 +38,7 @@ function getFreeBalance(balances: AccountBalance[], asset: string) {
 
 // Busca o saldo livre na Binance e grava no `brl` de todos os bots da sessão,
 // já que eles operam na mesma conta.
-export async function refreshAccountBalance({
+async function refreshAccountBalance({
   sessionId,
   apiKey,
 }: {
@@ -55,6 +57,25 @@ export async function refreshAccountBalance({
   return free;
 }
 
+// Atualiza o saldo pela Binance. Se ainda não cobrir a ordem, trava o bot até uma
+// ordem dele ser executada ou o lock expirar.
+export async function refreshBalanceForOrder({
+  order,
+  botId,
+  sessionId,
+  apiKey,
+}: {
+  order: OrderCost;
+  botId: string;
+  sessionId: string;
+  apiKey: string;
+}) {
+  const free = await refreshAccountBalance({ sessionId, apiKey });
+  const isEnough = getOrderBrlCost(order) <= free;
+  if (!isEnough) await lockInsufficientBalance(botId);
+  return isEnough;
+}
+
 // Confere o saldo local; se não cobrir a ordem, atualiza pela Binance e confere de novo.
 // Se a consulta falhar, a ordem não é enviada.
 export async function hasBalanceForOrder({
@@ -66,14 +87,14 @@ export async function hasBalanceForOrder({
   bot: BotDocument;
   apiKey: string;
 }) {
-  const cost = getOrderBrlCost(order);
-  if (cost <= bot.brl) return true;
+  if (getOrderBrlCost(order) <= bot.brl) return true;
   try {
-    const free = await refreshAccountBalance({
+    return await refreshBalanceForOrder({
+      order,
+      botId: bot._id.toString(),
       sessionId: bot.sessionId.toString(),
       apiKey,
     });
-    return cost <= free;
   } catch (err) {
     logger.error({ err, botId: bot._id }, "Failed to refresh account balance");
     return false;
