@@ -46,7 +46,7 @@ npm run test:e2e
 npm run test:e2e:infra:down
 ```
 
-As portas do ambiente E2E são MongoDB `27018`, RabbitMQ `5673` e Redis `6380`.
+As portas do ambiente E2E são MongoDB `37017`, RabbitMQ `37672` (painel `37673`) e Redis `37379`.
 Os valores de conexão podem ser copiados de [`.env.e2e.example`](.env.e2e.example).
 
 ## Rotas da API
