@@ -3,3 +3,4 @@ dist/
 .env
 scripts
 .env.debug
+.env.e2e

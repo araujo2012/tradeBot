@@ -1,7 +1,6 @@
 import http, { IncomingMessage, ServerResponse } from "http";
 import { AddressInfo } from "net";
 import { randomUUID } from "crypto";
-import { setTimeout as sleep } from "timers/promises";
 import WebSocket, { WebSocketServer } from "ws";
 
 type FakeOrderStatus =
@@ -31,14 +30,6 @@ export interface FakeBinanceCommand {
   id: string;
   method: string;
   params: Record<string, any>;
-}
-
-export type FillReportTiming = "before-response" | "after-response";
-
-// Mensagem enviada à aplicação sobre uma ordem: evento do user stream ou resposta do request.
-export interface FakeDelivery {
-  kind: "executionReport" | "response";
-  clientOrderId: string;
 }
 
 function asNumber(value: unknown) {
@@ -71,13 +62,9 @@ export class FakeBinance {
   private readonly clients = new Set<WebSocket>();
   private readonly orders = new Map<string, FakeOrder>();
   private readonly commands: FakeBinanceCommand[] = [];
-  private readonly deliveries: FakeDelivery[] = [];
   private sequence = 0;
   private nextOrderId = 50_000;
   private port = 0;
-  private marketPrice?: number;
-  private fillReportTiming: FillReportTiming = "after-response";
-  private fillReportGapMs = 0;
   private readonly freeBalances = new Map<string, number>();
 
   async start() {
@@ -117,30 +104,10 @@ export class FakeBinance {
     return order;
   }
 
-  // Ordens novas que cruzam este preço são executadas na hora, como na Binance real.
-  setMarketPrice(price: number) {
-    this.marketPrice = price;
-  }
-
-  // A Binance não garante a ordem entre o executionReport e a resposta do request.
-  // Em execuções imediatas, define qual chega primeiro e quanto tempo separa os dois.
-  setFillReportTiming(timing: FillReportTiming, gapMs: number) {
-    this.fillReportTiming = timing;
-    this.fillReportGapMs = gapMs;
-  }
-
   // Saldo livre informado pelo account.status. Com saldo de BRL definido, order.place
   // recusa compras acima dele. O saldo é fixo: ordens aceitas não o bloqueiam.
   setFreeBalance(asset: string, free: number) {
     this.freeBalances.set(asset, free);
-  }
-
-  getOrders() {
-    return [...this.orders.values()].map((order) => ({ ...order }));
-  }
-
-  getDeliveries() {
-    return this.deliveries.map((delivery) => ({ ...delivery }));
   }
 
   getCommands() {
@@ -190,7 +157,6 @@ export class FakeBinance {
       },
     });
 
-    this.deliveries.push({ kind: "executionReport", clientOrderId });
     for (const client of this.clients) {
       if (client.readyState === WebSocket.OPEN) client.send(message);
     }
@@ -231,52 +197,6 @@ export class FakeBinance {
     const freeBrl = this.freeBalances.get("BRL");
     if (freeBrl === undefined || String(params.side) !== "BUY") return true;
     return asNumber(params.price) * asNumber(params.quantity) <= freeBrl;
-  }
-
-  private crossesMarket(order: FakeOrder) {
-    if (this.marketPrice === undefined) return false;
-    return order.side === "SELL"
-      ? order.price <= this.marketPrice
-      : order.price >= this.marketPrice;
-  }
-
-  private fillIfCrossesMarket(order: FakeOrder) {
-    if (!this.crossesMarket(order)) return false;
-    order.executedQty = order.quantity;
-    order.status = "FILLED";
-    return true;
-  }
-
-  // Responde a criação/reposição. Em execução imediata, entrega o executionReport e a
-  // resposta na ordem definida por setFillReportTiming.
-  private async respondWithNewOrder(
-    client: WebSocket,
-    id: string,
-    order: FakeOrder,
-    buildResult: (order: FakeOrder) => any
-  ) {
-    const sendResponse = () => {
-      this.deliveries.push({ kind: "response", clientOrderId: order.clientOrderId });
-      this.send(client, id, 200, buildResult(order));
-    };
-    if (!this.fillIfCrossesMarket(order)) {
-      sendResponse();
-      return;
-    }
-
-    const sendFillReport = () =>
-      this.emitExecutionReport({
-        clientOrderId: order.clientOrderId,
-        status: "FILLED",
-        executedQty: order.quantity,
-      });
-    const [first, second] =
-      this.fillReportTiming === "before-response"
-        ? [sendFillReport, sendResponse]
-        : [sendResponse, sendFillReport];
-    first();
-    await sleep(this.fillReportGapMs);
-    second();
   }
 
   private async handleHttpRequest(
@@ -343,13 +263,13 @@ export class FakeBinance {
         this.handleOrderStatus(client, message.id, command.params);
         return;
       case "order.place":
-        await this.handleOrderPlace(client, message.id, command.params);
+        this.handleOrderPlace(client, message.id, command.params);
         return;
       case "order.cancel":
         this.handleOrderCancel(client, message.id, command.params);
         return;
       case "order.cancelReplace":
-        await this.handleOrderCancelReplace(client, message.id, command.params);
+        this.handleOrderCancelReplace(client, message.id, command.params);
         return;
       case "account.status":
         this.handleAccountStatus(client, message.id);
@@ -372,7 +292,7 @@ export class FakeBinance {
     this.send(client, id, 200, this.toOrderResult(order));
   }
 
-  private async handleOrderPlace(
+  private handleOrderPlace(
     client: WebSocket,
     id: string,
     params: Record<string, any>
@@ -389,9 +309,7 @@ export class FakeBinance {
       price: asNumber(params.price),
       quantity: asNumber(params.quantity),
     });
-    await this.respondWithNewOrder(client, id, order, (placed) =>
-      this.toOrderResult(placed)
-    );
+    this.send(client, id, 200, this.toOrderResult(order));
   }
 
   private handleOrderCancel(
@@ -412,7 +330,7 @@ export class FakeBinance {
     });
   }
 
-  private async handleOrderCancelReplace(
+  private handleOrderCancelReplace(
     client: WebSocket,
     id: string,
     params: Record<string, any>
@@ -432,15 +350,15 @@ export class FakeBinance {
       quantity: asNumber(params.quantity),
     });
 
-    await this.respondWithNewOrder(client, id, replacement, (placed) => ({
+    this.send(client, id, 200, {
       cancelResult: "SUCCESS",
       cancelResponse: {
         ...this.toOrderResult(original),
         origClientOrderId: original.clientOrderId,
       },
       newOrderResult: "SUCCESS",
-      newOrderResponse: this.toOrderResult(placed),
-    }));
+      newOrderResponse: this.toOrderResult(replacement),
+    });
   }
 
   // Responde como account.status com omitZeroBalances: só ativos com saldo.

@@ -58,6 +58,7 @@ export async function runManagerJob(botId: string) {
     });
     await handleOperationManager({
       botId,
+      sessionId: bot.sessionId.toString(),
       direction: "buy",
       newOrder: buyOrder,
       symbol: bot.symbol,
@@ -66,6 +67,7 @@ export async function runManagerJob(botId: string) {
     });
     await handleOperationManager({
       botId,
+      sessionId: bot.sessionId.toString(),
       direction: "sell",
       newOrder: sellOrder,
       symbol: bot.symbol,
@@ -120,6 +122,7 @@ async function handleExecutedOrdersManager({
 
 async function handleOperationManager({
   botId,
+  sessionId,
   direction,
   newOrder,
   symbol,
@@ -127,6 +130,7 @@ async function handleOperationManager({
   qtdDecimal,
 }: {
   botId: string;
+  sessionId: string;
   direction: string;
   newOrder: {
     direction: string;
@@ -162,10 +166,12 @@ async function handleOperationManager({
   const qtyDiff = Math.abs(newOrder.quantity - order.quantity);
   const priceDiffPercent = Math.abs(newOrder.price - order.price) / order.price;
   if (qtyDiff > qtdDecimal || priceDiffPercent > 0.001) {
+    // Sem o sessionId, a reposição sairia por uma conexão nova em vez do socket da sessão.
     const message = {
       action: "replaceOrder",
       payload: {
         botId,
+        sessionId,
         mode: "manager",
         direction,
         price: newOrder.price,
