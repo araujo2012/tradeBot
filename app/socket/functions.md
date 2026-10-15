@@ -8,12 +8,13 @@ Resumo: WebSocket API da Binance — conexões por sessão, requests assinados, 
 Consumidor da fila `socket` (processa uma mensagem por vez).
 - `handleStartSession` — abre o socket, faz logon e assina o user data stream (interna)
 - `handleStopSession` — fecha a sessão e para os bots (interna)
-- `handleCreateOrder` — envia `order.place` e salva o resultado (interna)
+- `handleCreateOrder` — confere o saldo (sem saldo, não envia), envia `order.place` e salva o resultado (interna)
+- `handleRejectedOrder` — fecha a ordem recusada pela Binance e, se faltou saldo, atualiza o saldo dos bots e trava o bot se ainda faltar (interna)
 - `handleCancelOrder` — envia `order.cancel` (interna)
 - `handleRestartSession` — reinicia a sessão (exportada)
-- `handleReplaceOrder` — envia `order.cancelReplace`, com fallback para cancelamento (interna)
+- `handleReplaceOrder` — envia `order.cancelReplace`, registra a execução imediata da nova ordem a partir da resposta, com fallback para cancelamento (interna)
 - `handleExecutedOrder` — despacha ordem executada conforme o modo (interna)
-- `handleExecutedOrderManager` — atualiza `executedQtd`/status da ordem do manager (interna)
+- `handleExecutedOrderManager` — atualiza `executedQtd`/status da ordem do manager e libera o lock de saldo do bot (interna)
 - `stopSessionBots` — para os bots ativos da sessão (interna)
 - `processQueue` — processa a fila interna de mensagens (interna)
 - `startSocketConsumer` — começa a consumir a fila `socket` (exportada)
@@ -37,10 +38,11 @@ Requests assinados (Ed25519) para a WebSocket API.
 - `socketLogon` — `session.logon` (exportada)
 - `socketOrderCancel` — `order.cancel` (exportada)
 - `socketOrderStatus` — `order.status` (exportada)
+- `socketAccountStatus` — `account.status` com `omitZeroBalances` (exportada)
 
 ### `socket.responses.ts`
 Tratamento de respostas e eventos.
 - `handlePlaceOrderResponse` — vincula `binanceId` e atualiza o status da ordem (exportada)
 - `markOrderCanceled` — marca ordem cancelada como `partialExecuted` (se houve execução) ou `closed`, sem reabrir ordem fechada (exportada)
 - `handleExecutionReport` — trata `executionReport` do user stream (exportada)
-- `handleExecutionReportManager` — atualiza a ordem do manager e reenfileira o bot após `PARTIAL_FILL_GRACE_MS` em fills parciais (interna)
+- `handleExecutionReportManager` — atualiza a ordem do manager, libera o lock de saldo do bot em execuções e reenfileira o bot (após `PARTIAL_FILL_GRACE_MS` em fills parciais) (interna)

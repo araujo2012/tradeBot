@@ -18,8 +18,18 @@ import { OrderEntry } from "../order/order.type";
 import { normalizeValue } from "../order/order.utils";
 import { stopBotJob } from "../bot/bot.jobs";
 import { logger } from "../lib/pino";
-import { decrementManagerInFlight } from "../bot/bot.utils";
+import {
+  decrementManagerInFlight,
+  releaseInsufficientBalanceLock,
+} from "../bot/bot.utils";
 import { sendToActivateBotQueue } from "../lib/bullMq";
+import { BinanceError } from "../binance/binance.interface";
+import {
+  getOrderBrlCost,
+  hasBalanceForOrder,
+  isInsufficientBalanceError,
+  refreshBalanceForOrder,
+} from "../balance/balance.service";
 
 const RATE_LIMIT = 5;
 const INTERVAL_MS = 1000 / RATE_LIMIT;
@@ -115,6 +125,14 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
       isRoundUp: order.direction === "sell",
       decimal: symbolConfig.priceDecimal,
     });
+    if (!(await hasBalanceForOrder({ order, bot, apiKey }))) {
+      logger.warn(
+        { botId: order.botId, cost: getOrderBrlCost(order) },
+        "Insufficient balance, order not sent"
+      );
+      await decrementManagerInFlight(order.botId.toString());
+      return;
+    }
     const clientId = crypto.randomUUID();
     const orderData = {
       ...order,
@@ -132,15 +150,17 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
       `Order ${savedOrder ? "updated" : "created"}: ${savedOrder?._id}`
     );
 
-    const { status, result } = await socketOrderPlace({
+    const response = await socketOrderPlace({
       order: { ...orderData, apiKey },
       clientId,
     });
 
-    if (status !== 200) {
-      logger.info("status !== 200: ", result);
-    }
     await decrementManagerInFlight(order.botId.toString());
+    if (response.status !== 200) {
+      await handleRejectedOrder(savedOrder, response, apiKey);
+      return;
+    }
+    const { result } = response;
     if (result?.status === "NEW") {
       savedOrder.status = "active";
       savedOrder.binanceId = result.clientOrderId || "";
@@ -152,6 +172,26 @@ async function handleCreateOrder(order: OrderEntry, apiKey: string) {
   } catch (err) {
     console.error("Error creating order:", err);
     throw err;
+  }
+}
+
+// A ordem recusada não existe na Binance. Se faltou saldo, o saldo local estava
+// desatualizado: é atualizado com o da conta e o bot fica travado se ainda faltar.
+async function handleRejectedOrder(
+  order: OrderDocument,
+  response: { error?: BinanceError },
+  apiKey: string
+) {
+  logger.warn({ orderId: order._id, error: response.error }, "Order rejected");
+  order.status = "closed";
+  await order.save();
+  if (isInsufficientBalanceError(response)) {
+    await refreshBalanceForOrder({
+      order,
+      botId: order.botId.toString(),
+      sessionId: order.sessionId.toString(),
+      apiKey,
+    });
   }
 }
 
@@ -266,19 +306,22 @@ async function handleReplaceOrder(
       }
     }
     if (result?.result?.newOrderResult === "SUCCESS") {
+      const { newOrderResponse } = result.result;
       const bot = await BotModel.findById(order.botId);
       const orderData = {
         ...order,
         sessionId: bot?.sessionId.toString(),
         userId: bot?.userId.toString(),
-        binanceId: result?.result?.newOrderResponse?.clientOrderId,
+        binanceId: newOrderResponse?.clientOrderId,
         status: "active",
         clientId: clientId,
         executedQtd: 0,
       };
       const newOrder = await OrderModel.create(orderData);
-      if (Number(result?.result?.newOrderResponse?.executedQty) > 0) {
-        handleExecutedOrder(newOrder, result?.result);
+      // A ordem pode ser executada na hora; o executionReport pode ter chegado antes
+      // de ela existir no banco, então a resposta é a fonte da execução.
+      if (Number(newOrderResponse?.executedQty) > 0) {
+        await handleExecutedOrder(newOrder, newOrderResponse);
       }
     }
     await decrementManagerInFlight(order.botId.toString());
@@ -322,6 +365,7 @@ async function handleExecutedOrderManager(order: OrderDocument, result: any) {
   }
   order.status = "executed";
   await order.save();
+  await releaseInsufficientBalanceLock(order.botId);
 }
 
 async function stopSessionBots(sessionId: string) {

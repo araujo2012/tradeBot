@@ -1,4 +1,5 @@
 import amqp from "amqplib";
+import { Queue } from "bullmq";
 import mongoose, { Types } from "mongoose";
 import Redis from "ioredis";
 import { BotModel } from "../../models/bot";
@@ -196,6 +197,30 @@ async function populateScenarioFixture(
     price: 120,
     quantity: fixture.fullQty,
   });
+}
+
+// Publica na mesma fila do BullMQ que a aplicação consome para rodar o manager.
+export async function triggerManagerRun(botId: Types.ObjectId) {
+  const connection = new Redis(REDIS_URI, { maxRetriesPerRequest: null });
+  const queue = new Queue("activate-bot", { connection: connection as any });
+
+  await queue.add(
+    "runManagerBot",
+    { botId: botId.toString() },
+    { removeOnComplete: true }
+  );
+  await queue.close();
+  await connection.quit();
+}
+
+// TTL em segundos de uma chave do Redis da aplicação (-2 quando a chave não existe).
+export async function readRedisTtl(key: string) {
+  const connection = new Redis(REDIS_URI);
+  try {
+    return await connection.ttl(key);
+  } finally {
+    await connection.quit();
+  }
 }
 
 export function isCancellationOf(

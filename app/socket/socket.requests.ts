@@ -8,7 +8,10 @@ import { OrderEntry } from "../order/order.type";
 import { WebSocket } from "ws";
 import { WebsocketDataModel } from "../../models/websocketData";
 import { DebugerModel } from "../../models/debuger";
-import { BinanceOrderResponse } from "../binance/binance.interface";
+import {
+  BinanceAccountResponse,
+  BinanceOrderResponse,
+} from "../binance/binance.interface";
 import { logger } from "../lib/pino";
 
 const PRIVATE_KEY_PATH = path.resolve(
@@ -404,6 +407,60 @@ export async function socketOrderStatus({
     const timeout = setTimeout(() => {
       reject(
         new Error("Timeout waiting for response from Binance (order.status)")
+      );
+    }, 10000);
+
+    const handleMessage = (data: Buffer) => {
+      try {
+        const parsed = JSON.parse(data.toString());
+        if (parsed.id !== message.id) return;
+
+        clearTimeout(timeout);
+        socket.off("message", handleMessage);
+        saveBinanceError(sessionId, message, parsed);
+        resolve(parsed);
+      } catch {}
+    };
+    WebsocketDataModel.create({
+      sessionId,
+      type: "sended",
+      payload: { message },
+    });
+    socket.on("message", handleMessage);
+    socket.send(JSON.stringify(message));
+  });
+}
+
+export async function socketAccountStatus({
+  apiKey,
+  sessionId,
+}: {
+  apiKey: string;
+  sessionId: string;
+}): Promise<BinanceAccountResponse> {
+  let socket = getBinanceSocket(sessionId);
+  if (!socket) {
+    await initializeBinanceSocket(sessionId);
+    socket = getBinanceSocket(sessionId);
+    if (!socket) throw new Error("Failed to initialize WebSocket");
+  }
+  const offset = await getOrSetOffset();
+  const timestamp = Date.now() - offset;
+  const params: any = {
+    apiKey,
+    omitZeroBalances: true,
+    timestamp,
+  };
+  params.signature = signPayload(params);
+  const message = {
+    id: crypto.randomUUID(),
+    method: "account.status",
+    params,
+  };
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(
+        new Error("Timeout waiting for response from Binance (account.status)")
       );
     }, 10000);
 

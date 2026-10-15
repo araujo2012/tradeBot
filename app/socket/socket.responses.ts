@@ -1,5 +1,6 @@
 import { sendToActivateBotQueue } from "../lib/bullMq";
 import { OrderModel, OrderDocument } from "../../models/order";
+import { releaseInsufficientBalanceLock } from "../bot/bot.utils";
 
 const PARTIAL_FILL_GRACE_MS = Number(
   process.env.PARTIAL_FILL_GRACE_MS || 60_000
@@ -87,6 +88,7 @@ async function handleExecutionReportManager({
     order.executedQtd = executed;
     order.status = "executed";
     await order.save();
+    await releaseInsufficientBalanceLock(order.botId);
     await new Promise((resolve) =>
       setTimeout(resolve, PARTIAL_FILL_GRACE_MS)
     );
@@ -99,6 +101,7 @@ async function handleExecutionReportManager({
     order.executedQtd = executed;
     order.status = "executed";
     await order.save();
+    await releaseInsufficientBalanceLock(order.botId);
     sendToActivateBotQueue({
       action: "runManagerBot",
       botId: order.botId.toString(),

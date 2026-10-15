@@ -6,7 +6,7 @@ Resumo: execução dos bots (modos *manager* e *administrator*), tipos do bot e 
 
 ### `bot.jobs.ts`
 Ciclo de execução do bot *manager*.
-- `runManagerJob` — executa uma rodada do manager: trata ordens executadas, calcula limites e gera novas ordens (exportada)
+- `runManagerJob` — executa uma rodada do manager: trata ordens executadas, calcula limites e gera novas ordens; com lock de saldo, termina sem rodar e sem retry (exportada)
 - `handleExecutedOrdersManager` — fecha ordens executadas e calcula o delta de cripto; cancela ordens parciais (interna)
 - `handleOperationManager` — decide e envia as operações de compra/venda (interna)
 - `setVarianceManager` — ajusta a variância mínima do bot (interna)
@@ -25,9 +25,13 @@ Tipos do bot.
 - `BotType` — formato do documento de bot (exportada)
 
 ### `bot.utils.ts`
-Locks/contadores "in flight" por bot em Redis.
+Locks/contadores por bot em Redis: "in flight" e saldo insuficiente.
 - `normalizeBotId` — converte `ObjectId`/string em string (interna)
 - `handleRunManagerJobQueue` — tenta adquirir o lock `bot:inflight:<id>` (exportada)
 - `incrementManagerInFlight` — incrementa o contador in-flight (exportada)
 - `decrementManagerInFlight` — decrementa e remove o lock ao zerar (exportada)
+- `insufficientBalanceLockKey` — chave `bot:insufficient-balance:<id>` do lock de saldo (interna)
+- `lockInsufficientBalance` — trava o bot por 10 minutos (`INSUFFICIENT_BALANCE_LOCK_SECONDS`) por falta de saldo (exportada)
+- `hasInsufficientBalanceLock` — indica se o bot está travado por falta de saldo (exportada)
+- `releaseInsufficientBalanceLock` — remove o lock de saldo, usado quando uma ordem do bot é executada (exportada)
 - `getMinVarianceBot` — calcula a variância mínima considerando taxas (exportada)

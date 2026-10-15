@@ -34,3 +34,7 @@ export const VALID_SYMBOLS = [
 
 export const MAX_LIMIT = 500;
 export const FIXED_FETCH_LIMIT = 40;
+
+// A Binance usa o código -2010 para várias recusas de ordem nova; a mensagem diz qual foi.
+export const NEW_ORDER_REJECTED_CODE = -2010;
+export const INSUFFICIENT_BALANCE_MESSAGE = "insufficient balance";
