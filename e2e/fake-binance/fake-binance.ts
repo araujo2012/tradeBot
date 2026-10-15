@@ -1,6 +1,7 @@
 import http, { IncomingMessage, ServerResponse } from "http";
 import { AddressInfo } from "net";
 import { randomUUID } from "crypto";
+import { setTimeout as sleep } from "timers/promises";
 import WebSocket, { WebSocketServer } from "ws";
 
 type FakeOrderStatus =
@@ -32,6 +33,14 @@ export interface FakeBinanceCommand {
   params: Record<string, any>;
 }
 
+export type FillReportTiming = "before-response" | "after-response";
+
+// Mensagem enviada à aplicação sobre uma ordem: evento do user stream ou resposta do request.
+export interface FakeDelivery {
+  kind: "executionReport" | "response";
+  clientOrderId: string;
+}
+
 function asNumber(value: unknown) {
   const result = Number(value);
   if (!Number.isFinite(result)) {
@@ -56,10 +65,13 @@ export class FakeBinance {
   private readonly clients = new Set<WebSocket>();
   private readonly orders = new Map<string, FakeOrder>();
   private readonly commands: FakeBinanceCommand[] = [];
+  private readonly deliveries: FakeDelivery[] = [];
   private sequence = 0;
   private nextOrderId = 50_000;
   private port = 0;
   private marketPrice?: number;
+  private fillReportTiming: FillReportTiming = "after-response";
+  private fillReportGapMs = 0;
 
   async start() {
     this.httpServer.on("upgrade", (request, socket, head) => {
@@ -103,8 +115,19 @@ export class FakeBinance {
     this.marketPrice = price;
   }
 
+  // A Binance não garante a ordem entre o executionReport e a resposta do request.
+  // Em execuções imediatas, define qual chega primeiro e quanto tempo separa os dois.
+  setFillReportTiming(timing: FillReportTiming, gapMs: number) {
+    this.fillReportTiming = timing;
+    this.fillReportGapMs = gapMs;
+  }
+
   getOrders() {
     return [...this.orders.values()].map((order) => ({ ...order }));
+  }
+
+  getDeliveries() {
+    return this.deliveries.map((delivery) => ({ ...delivery }));
   }
 
   getCommands() {
@@ -154,6 +177,7 @@ export class FakeBinance {
       },
     });
 
+    this.deliveries.push({ kind: "executionReport", clientOrderId });
     for (const client of this.clients) {
       if (client.readyState === WebSocket.OPEN) client.send(message);
     }
@@ -204,22 +228,36 @@ export class FakeBinance {
     return true;
   }
 
-  // A Binance não garante a ordem entre a resposta e o executionReport. Aqui o evento
-  // chega antes da resposta, quando a aplicação ainda não gravou a ordem (pior caso).
-  private respondWithNewOrder(
+  // Responde a criação/reposição. Em execução imediata, entrega o executionReport e a
+  // resposta na ordem definida por setFillReportTiming.
+  private async respondWithNewOrder(
     client: WebSocket,
     id: string,
     order: FakeOrder,
     buildResult: (order: FakeOrder) => any
   ) {
-    if (this.fillIfCrossesMarket(order)) {
+    const sendResponse = () => {
+      this.deliveries.push({ kind: "response", clientOrderId: order.clientOrderId });
+      this.send(client, id, 200, buildResult(order));
+    };
+    if (!this.fillIfCrossesMarket(order)) {
+      sendResponse();
+      return;
+    }
+
+    const sendFillReport = () =>
       this.emitExecutionReport({
         clientOrderId: order.clientOrderId,
         status: "FILLED",
         executedQty: order.quantity,
       });
-    }
-    this.send(client, id, 200, buildResult(order));
+    const [first, second] =
+      this.fillReportTiming === "before-response"
+        ? [sendFillReport, sendResponse]
+        : [sendResponse, sendFillReport];
+    first();
+    await sleep(this.fillReportGapMs);
+    second();
   }
 
   private async handleHttpRequest(
@@ -286,13 +324,13 @@ export class FakeBinance {
         this.handleOrderStatus(client, message.id, command.params);
         return;
       case "order.place":
-        this.handleOrderPlace(client, message.id, command.params);
+        await this.handleOrderPlace(client, message.id, command.params);
         return;
       case "order.cancel":
         this.handleOrderCancel(client, message.id, command.params);
         return;
       case "order.cancelReplace":
-        this.handleOrderCancelReplace(client, message.id, command.params);
+        await this.handleOrderCancelReplace(client, message.id, command.params);
         return;
       default:
         this.send(client, message.id, 400, undefined, -1000, "Unknown method");
@@ -312,7 +350,7 @@ export class FakeBinance {
     this.send(client, id, 200, this.toOrderResult(order));
   }
 
-  private handleOrderPlace(
+  private async handleOrderPlace(
     client: WebSocket,
     id: string,
     params: Record<string, any>
@@ -324,7 +362,7 @@ export class FakeBinance {
       price: asNumber(params.price),
       quantity: asNumber(params.quantity),
     });
-    this.respondWithNewOrder(client, id, order, (placed) =>
+    await this.respondWithNewOrder(client, id, order, (placed) =>
       this.toOrderResult(placed)
     );
   }
@@ -347,7 +385,7 @@ export class FakeBinance {
     });
   }
 
-  private handleOrderCancelReplace(
+  private async handleOrderCancelReplace(
     client: WebSocket,
     id: string,
     params: Record<string, any>
@@ -367,7 +405,7 @@ export class FakeBinance {
       quantity: asNumber(params.quantity),
     });
 
-    this.respondWithNewOrder(client, id, replacement, (placed) => ({
+    await this.respondWithNewOrder(client, id, replacement, (placed) => ({
       cancelResult: "SUCCESS",
       cancelResponse: {
         ...this.toOrderResult(original),

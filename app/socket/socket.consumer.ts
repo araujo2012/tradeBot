@@ -266,19 +266,22 @@ async function handleReplaceOrder(
       }
     }
     if (result?.result?.newOrderResult === "SUCCESS") {
+      const { newOrderResponse } = result.result;
       const bot = await BotModel.findById(order.botId);
       const orderData = {
         ...order,
         sessionId: bot?.sessionId.toString(),
         userId: bot?.userId.toString(),
-        binanceId: result?.result?.newOrderResponse?.clientOrderId,
+        binanceId: newOrderResponse?.clientOrderId,
         status: "active",
         clientId: clientId,
         executedQtd: 0,
       };
       const newOrder = await OrderModel.create(orderData);
-      if (Number(result?.result?.newOrderResponse?.executedQty) > 0) {
-        handleExecutedOrder(newOrder, result?.result);
+      // A ordem pode ser executada na hora; o executionReport pode ter chegado antes
+      // de ela existir no banco, então a resposta é a fonte da execução.
+      if (Number(newOrderResponse?.executedQty) > 0) {
+        await handleExecutedOrder(newOrder, newOrderResponse);
       }
     }
     await decrementManagerInFlight(order.botId.toString());

@@ -11,7 +11,7 @@ Consumidor da fila `socket` (processa uma mensagem por vez).
 - `handleCreateOrder` — envia `order.place` e salva o resultado (interna)
 - `handleCancelOrder` — envia `order.cancel` (interna)
 - `handleRestartSession` — reinicia a sessão (exportada)
-- `handleReplaceOrder` — envia `order.cancelReplace`, com fallback para cancelamento (interna)
+- `handleReplaceOrder` — envia `order.cancelReplace`, registra a execução imediata da nova ordem a partir da resposta, com fallback para cancelamento (interna)
 - `handleExecutedOrder` — despacha ordem executada conforme o modo (interna)
 - `handleExecutedOrderManager` — atualiza `executedQtd`/status da ordem do manager (interna)
 - `stopSessionBots` — para os bots ativos da sessão (interna)
