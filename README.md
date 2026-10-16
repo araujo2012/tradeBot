@@ -37,8 +37,9 @@ yarn start
 ### Teste E2E local
 
 O teste E2E sobe uma instância isolada de MongoDB, RabbitMQ e Redis com Docker
-Compose e usa uma Binance fake local. O primeiro comando sobe a infraestrutura;
-o comando principal também faz o teardown automaticamente.
+Compose. A maioria dos cenários usa uma Binance fake local; os arquivos
+`*.testnet.e2e.test.ts` falam com o [Spot Testnet da Binance](https://testnet.binance.vision).
+O primeiro comando sobe a infraestrutura; o comando principal também faz o teardown automaticamente.
 
 ```bash
 npm run test:e2e:infra:up
@@ -47,7 +48,21 @@ npm run test:e2e:infra:down
 ```
 
 As portas do ambiente E2E são MongoDB `37017`, RabbitMQ `37672` (painel `37673`) e Redis `37379`.
-Os valores de conexão podem ser copiados de [`.env.e2e.example`](.env.e2e.example).
+Os valores de conexão podem ser copiados de [`.env.e2e.example`](.env.e2e.example) para um `.env.e2e`
+(fora do git), que a suíte carrega automaticamente.
+
+#### Chave do Spot Testnet
+
+1. Gere um par de chaves Ed25519 na pasta `scripts/` (fora do git):
+   `openssl genpkey -algorithm ed25519 -out scripts/testnet_private_key.pem` e
+   `openssl pkey -in scripts/testnet_private_key.pem -pubout -out scripts/testnet_public_key.pem`.
+2. Entre em https://testnet.binance.vision (login com GitHub), registre a chave pública
+   (`testnet_public_key.pem`) como API key do tipo Ed25519 e copie a API key gerada.
+3. No `.env.e2e`, preencha `BINANCE_TESTNET_API_KEY` (e `BINANCE_TESTNET_PRIVATE_KEY_PATH`, se a
+   chave privada estiver em outro lugar).
+
+A conta do testnet recebe saldo virtual e é zerada pela Binance cerca de uma vez por mês. Os testes
+cancelam as ordens abertas do símbolo antes e depois de cada cenário, então use uma conta só para eles.
 
 ## Rotas da API
 

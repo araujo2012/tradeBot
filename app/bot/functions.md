@@ -8,7 +8,7 @@ Resumo: execução dos bots (modos *manager* e *administrator*), tipos do bot e 
 Ciclo de execução do bot *manager*.
 - `runManagerJob` — executa uma rodada do manager: trata ordens executadas, calcula limites e gera novas ordens; com lock de saldo, termina sem rodar e sem retry (exportada)
 - `handleExecutedOrdersManager` — fecha ordens executadas e calcula o delta de cripto; cancela ordens parciais (interna)
-- `handleOperationManager` — decide e envia as operações de compra/venda (interna)
+- `handleOperationManager` — decide e envia as operações de compra/venda; a reposição leva o `sessionId` para sair pelo socket da sessão (interna)
 - `setVarianceManager` — ajusta a variância mínima do bot (interna)
 - `generateNewOrdersManager` — monta as novas ordens a partir dos limites (interna)
 - `stopBotJob` — para o job de um bot (exportada)

@@ -31,7 +31,7 @@ Conexões WebSocket por sessão, ping e reconexão (URL via `BINANCE_WS_URL`).
 Requests assinados (Ed25519) para a WebSocket API.
 - `signPayload` — assina os parâmetros ordenados (interna)
 - `saveBinanceError` — grava na coleção `debuger` a operação e o erro quando a resposta não tem status `200` (interna)
-- `getOrSetOffset` — offset de relógio com a Binance, em cache no Redis (interna)
+- `getOrSetOffset` — offset de relógio com a Binance (`time` na URL de `BINANCE_REST_URL`), em cache no Redis (interna)
 - `socketOrderPlace` — `order.place` (exportada)
 - `socketOrderReplace` — `order.cancelReplace` (exportada)
 - `socketUserStream` — `userDataStream.subscribe` (exportada)

@@ -93,25 +93,42 @@ export interface ScenarioFixture {
   initialCrypto: number;
 }
 
+// Endereços e chave que a aplicação usa para falar com a Binance (falsa ou testnet).
+export interface BinanceConnection {
+  wsUrl: string;
+  restUrl: string;
+  privateKeyPath: string;
+}
+
+// Cria a sessão ativa que a aplicação inicia ao subir.
+export async function createScenarioSession(suffix: string, apiKey: string) {
+  const userId = new Types.ObjectId();
+  const sessionId = new Types.ObjectId();
+
+  await SessionModel.create({
+    _id: sessionId,
+    userId,
+    apiKey,
+    status: "active",
+    name: `e2e-session-${suffix}`,
+  });
+
+  return { userId, sessionId };
+}
+
 async function createScenarioFixture(
   suffix: string
 ): Promise<ScenarioFixture> {
-  const userId = new Types.ObjectId();
-  const sessionId = new Types.ObjectId();
+  const { userId, sessionId } = await createScenarioSession(
+    suffix,
+    `e2e-api-key-${suffix}`
+  );
   const botId = new Types.ObjectId();
   const oldBuyId = `e2e-${suffix}-old-buy`;
   const oldSellId = `e2e-${suffix}-old-sell`;
   const initialCrypto = 1;
   const fullQty = 0.02;
   const partialQty = 0.01;
-
-  await SessionModel.create({
-    _id: sessionId,
-    userId,
-    apiKey: `e2e-api-key-${suffix}`,
-    status: "active",
-    name: `e2e-session-${suffix}`,
-  });
 
   return {
     userId,
@@ -235,6 +252,46 @@ export function isCancellationOf(
   );
 }
 
+// Sobe a aplicação apontando para a Binance informada e espera ela ativar a sessão
+// (logon e assinatura do user data stream).
+export async function startApplication(
+  app: ApplicationProcess,
+  binance: BinanceConnection,
+  sessionId: Types.ObjectId
+) {
+  const port = await getFreePort();
+
+  await app.start({
+    MONGO_URI,
+    RABBITMQ_URI,
+    REDIS_URI,
+    PORT: String(port),
+    BINANCE_WS_URL: binance.wsUrl,
+    BINANCE_REST_URL: binance.restUrl,
+    BINANCE_PRIVATE_KEY_PATH: binance.privateKeyPath,
+    PARTIAL_FILL_GRACE_MS: String(PARTIAL_FILL_GRACE_MS),
+    JWT_SECRET: "e2e-secret",
+  });
+
+  await waitFor(
+    async () => SessionModel.findById(sessionId).select("status").lean(),
+    (session) => session?.status === "active",
+    "the E2E session to become active"
+  );
+}
+
+// Erro do cenário com os logs da aplicação e detalhes extras para o diagnóstico.
+export function withApplicationLogs(
+  error: unknown,
+  app: ApplicationProcess,
+  details = ""
+) {
+  const message = error instanceof Error ? error.message : String(error);
+  return new Error(
+    `${message}\n\nApplication logs:\n${app.getLogs()}${details}`
+  );
+}
+
 export async function runWithApplication(
   testName: string,
   scenario: (
@@ -246,40 +303,25 @@ export async function runWithApplication(
   const fakeBinance = new FakeBinance();
   const fakeConnection = await fakeBinance.start();
   const privateKey = await createTestPrivateKey();
-  const port = await getFreePort();
   const app = new ApplicationProcess();
   const suffix = `${testName}-${Date.now()}`;
 
   try {
     const fixture = await createScenarioFixture(suffix);
 
-    await app.start({
-      MONGO_URI,
-      RABBITMQ_URI,
-      REDIS_URI,
-      PORT: String(port),
-      BINANCE_WS_URL: fakeConnection.wsUrl,
-      BINANCE_REST_URL: fakeConnection.restUrl,
-      BINANCE_PRIVATE_KEY_PATH: privateKey.filePath,
-      PARTIAL_FILL_GRACE_MS: String(PARTIAL_FILL_GRACE_MS),
-      JWT_SECRET: "e2e-secret",
-    });
-
-    await waitFor(
-      async () => SessionModel.findById(fixture.sessionId).select("status").lean(),
-      (session) => session?.status === "active",
-      "the E2E session to become active"
+    await startApplication(
+      app,
+      { ...fakeConnection, privateKeyPath: privateKey.filePath },
+      fixture.sessionId
     );
     await populateScenarioFixture(fakeBinance, fixture);
     await scenario(fixture, fakeBinance, app);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `${message}\n\nApplication logs:\n${app.getLogs()}\n\nFake Binance commands:\n${JSON.stringify(
-        fakeBinance.getCommandSummary(),
-        null,
-        2
-      )}`
+    const commands = JSON.stringify(fakeBinance.getCommandSummary(), null, 2);
+    throw withApplicationLogs(
+      error,
+      app,
+      `\n\nFake Binance commands:\n${commands}`
     );
   } finally {
     await app.stop();
